@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Structured output with Ollama</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Reference sheet</p>
+  <h1>Structured output</h1>
+  <p class="standfirst">Everything needed to get schema-valid JSON out of a local model, and the exact boundary of what that buys you.</p>
+  <p class="meta">Checked 26 Oct 2026 · Ollama 0.6.x · ollama-js 0.6.4 · zod 4</p>
+</header>
+
+<h2>The guarantee boundary</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Guaranteed</th><th>Not guaranteed</th></tr></thead>
+<tbody>
+<tr><td>Output matches the schema's shape, token by token</td><td>The values are true, sane, or internally consistent</td></tr>
+<tr><td>No preamble, apology, or markdown fence</td><td>That generation finishes — truncation yields unparseable JSON</td></tr>
+<tr><td>Required fields appear; types are respected</td><td>Content quality, if the prompt never asked for JSON</td></tr>
+<tr><td>Enum values come from your list</td><td>Speed — masking costs per-token time, unparallelised</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>The call, in TypeScript</h2>
+
+<pre><code>import ollama from "ollama";
+import { z } from "zod";
+
+const Recipe = z.object({
+  title: z.string(),
+  servings: z.int().positive(),
+  steps: z.array(z.string()),
+});
+
+const res = await ollama.chat({
+  model: "qwen3.5:9b",
+  messages: [
+    { role: "system", content: "Answer only in the requested JSON." },
+    { role: "user", content: "A gluten-free dinner. Return as JSON." },
+  ],
+  format: z.toJSONSchema(Recipe),   // schema object, not the string "json"
+  options: { temperature: 0.3 },     // low; 0 for maximum determinism
+  think: false,                      // thinking models only
+});
+
+const recipe = Recipe.parse(JSON.parse(res.message.content));</code></pre>
+
+<p>One Zod schema does both jobs: <code>z.toJSONSchema()</code> produces the constraint sent to the model, and the same object parses the reply into a typed value.</p>
+
+<h2>The same call, as curl</h2>
+
+<pre><code>curl http://localhost:11434/api/chat -d '{
+  "model": "qwen3.5:9b",
+  "messages": [{"role": "user", "content": "Name 3 gluten-free grains. Return as JSON."}],
+  "stream": false,
+  "format": {
+    "type": "object",
+    "properties": { "grains": { "type": "array", "items": { "type": "string" } } },
+    "required": ["grains"]
+  }
+}'</code></pre>
+
+<h2>Options worth knowing</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Option</th><th>Where</th><th>Use</th></tr></thead>
+<tbody>
+<tr><td><code>format</code></td><td>top level</td><td><code>"json"</code> for loose JSON mode; a schema object for constrained decoding. Always prefer the schema.</td></tr>
+<tr><td><code>options.temperature</code></td><td>nested</td><td>0.2–0.4 for structured work; 0 when you want the same answer twice.</td></tr>
+<tr><td><code>options.num_ctx</code></td><td>nested</td><td>Context window. Too small is the usual cause of forgotten history in a long chat.</td></tr>
+<tr><td><code>options.num_predict</code></td><td>nested</td><td>Cap on generated tokens. Too low is the usual cause of truncated JSON.</td></tr>
+<tr><td><code>keep_alive</code></td><td>top level</td><td>How long the model stays resident. Default <code>5m</code>; <code>"30m"</code> to avoid cold-start pauses.</td></tr>
+<tr><td><code>think</code></td><td>top level</td><td><code>false</code> to skip reasoning tokens on thinking models. Errors on models without the capability.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Symptom → cause</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code>JSON.parse</code> throws on a truncated string</td><td>Generation hit <code>num_predict</code> or ran out of context</td><td>Raise <code>num_predict</code>; shrink the schema or the history</td></tr>
+<tr><td>Valid JSON, nonsense values</td><td>Working as designed — the grammar never saw the semantics</td><td>Verify in code and feed problems back as a revision turn</td></tr>
+<tr><td>Long runs of whitespace or padding</td><td>Prompt never asked for JSON, so sampling fell off the likely path</td><td>Say "return as JSON" in the prompt as well as setting <code>format</code></td></tr>
+<tr><td>Noticeably slower than unconstrained calls</td><td>Per-token grammar masking, not parallelised</td><td>Simplify the schema; drop fields you do not consume</td></tr>
+<tr><td>Fields present but always the same value</td><td>Temperature at 0 plus a weak prompt</td><td>Raise to ~0.3, or give the model more to go on</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn"><p><strong>Rule of thumb.</strong> If a wrong value would do damage, the schema is not your safeguard — it only decides where the value lands in the object. Write the check.</p></div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0001-the-grammar-not-the-prompt.html">← Lesson 01: The grammar, not the prompt</a>
+  <a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference</a>
+  <a href="../RESOURCES.md">Resources</a>
+</nav>
+
+</main>
+</body>
+</html>

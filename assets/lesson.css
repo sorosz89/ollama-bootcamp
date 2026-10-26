@@ -1,0 +1,140 @@
+/* Shared stylesheet for every lesson and reference sheet in this workspace.
+   Tufte-ish: one measured column, wide margin for notes, serif text, prints well. */
+
+:root {
+  --ink: #141210;
+  --ink-soft: #55504a;
+  --ink-faint: #8a837a;
+  --bg: #fffdf9;
+  --rule: #e2dcd1;
+  --accent: #8a3324;        /* oxide red, for emphasis and links */
+  --accent-soft: #f6ece6;
+  --good: #2c6448;
+  --good-soft: #e8f2ec;
+  --warn: #8a6410;
+  --warn-soft: #f8f0dc;
+  --code-bg: #f4f0e8;
+  --measure: 38rem;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e8e3db; --ink-soft: #b3aca2; --ink-faint: #837c72;
+    --bg: #15140f; --rule: #332f28;
+    --accent: #e08a6a; --accent-soft: #2a1d17;
+    --good: #7fc6a1; --good-soft: #17251e;
+    --warn: #d9ae5a; --warn-soft: #251f12;
+    --code-bg: #1e1c17;
+  }
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.page { max-width: 64rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+.page > * { max-width: var(--measure); }
+.page > .wide { max-width: none; }
+
+/* ---- masthead ---- */
+.masthead { border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; margin-bottom: 2.5rem; }
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 0.75rem;
+}
+h1 { font-size: 2.1rem; line-height: 1.15; font-weight: 600; margin: 0 0 0.6rem; letter-spacing: -0.015em; }
+.standfirst { font-size: 1.15rem; color: var(--ink-soft); font-style: italic; margin: 0; }
+.meta { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); margin-top: 1rem; }
+
+h2 {
+  font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em;
+  margin: 3rem 0 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--rule);
+}
+h3 { font-size: 1.05rem; font-weight: 600; margin: 2rem 0 0.5rem; }
+p { margin: 0 0 1.1rem; }
+a { color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+ul, ol { padding-left: 1.3rem; margin: 0 0 1.1rem; }
+li { margin-bottom: 0.45rem; }
+strong { font-weight: 650; }
+code { font-family: var(--mono); font-size: 0.85em; background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 3px; }
+pre {
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1.55;
+  background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 4px; padding: 0.9rem 1rem; overflow-x: auto; margin: 0 0 1.3rem;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* ---- the big idea: one framed claim per lesson ---- */
+.keystone {
+  border: 1px solid var(--accent); background: var(--accent-soft);
+  border-radius: 4px; padding: 1.1rem 1.3rem; margin: 2rem 0;
+}
+.keystone p { margin: 0; font-size: 1.1rem; }
+.keystone .label {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 0.45rem;
+}
+
+/* ---- callouts ---- */
+.note, .warn, .win {
+  border-left: 3px solid var(--rule); padding: 0.75rem 0 0.75rem 1rem;
+  margin: 1.5rem 0; font-size: 0.95rem; color: var(--ink-soft);
+}
+.warn { border-left-color: var(--warn); background: var(--warn-soft); padding-right: 1rem; border-radius: 0 4px 4px 0; }
+.win { border-left-color: var(--good); background: var(--good-soft); padding-right: 1rem; border-radius: 0 4px 4px 0; color: var(--ink); }
+.note > :last-child, .warn > :last-child, .win > :last-child { margin-bottom: 0; }
+
+/* ---- tables ---- */
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin: 0 0 1.4rem; }
+th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+.table-scroll { overflow-x: auto; }
+
+/* ---- numbered steps for hands-on tasks ---- */
+.steps { list-style: none; counter-reset: step; padding: 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 2.4rem; margin-bottom: 1.4rem; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0.05rem;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 1px solid var(--accent);
+  color: var(--accent); font-family: var(--mono); font-size: 0.78rem;
+  display: grid; place-items: center;
+}
+
+/* ---- citations ---- */
+.cite { font-size: 0.82rem; color: var(--ink-faint); font-style: italic; }
+.sources { font-size: 0.88rem; }
+.sources li { margin-bottom: 0.6rem; }
+
+/* ---- footer nav ---- */
+.footer-nav {
+  margin-top: 4rem; padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 0.6rem 1.75rem;
+}
+.ask {
+  margin-top: 2.5rem; border: 1px dashed var(--rule); border-radius: 4px;
+  padding: 1rem 1.2rem; font-size: 0.95rem; color: var(--ink-soft);
+}
+.ask > :last-child { margin-bottom: 0; }
+
+@media print {
+  :root { --bg: #fff; --ink: #000; }
+  body { font-size: 10.5pt; }
+  .page { padding: 0; max-width: none; }
+  h2 { page-break-after: avoid; }
+  pre, .keystone, .quiz-q, table { page-break-inside: avoid; }
+  .no-print { display: none !important; }
+  a::after { content: " (" attr(href) ")"; font-size: 0.75em; color: #555; word-break: break-all; }
+  .quiz-opt a::after, .footer-nav a::after { content: ""; }
+}

@@ -36,6 +36,25 @@ Tests use the built-in `node:test` runner with `node:assert/strict` — no Vites
 
 Everything shares the root `package.json` and `tsconfig.json`; there are no workspaces. `tsconfig.json`'s `include` is `*/*.ts`, which covers exercise directories one level deep.
 
+## Teaching workspace
+
+The repo is also a learning workspace, driven by the `teach` skill, and it is tracked in git — the learning trail is part of what the repo demonstrates. Write every file in it for a reader who is not the author.
+
+- `MISSION.md` — why this is being learned. Every lesson traces back to it; it decides what is worth teaching next.
+- `RESOURCES.md` — trusted sources, each annotated with when to reach for it. Its `## Gaps` section names what no good source has been found for yet, and drives the next round of research.
+- `NOTES.md` — working notes, preferences, decisions, and the queue of candidate lessons.
+- `learning-records/NNNN-*.md` — what has been established and why it changes what to teach next. Sequential; scan for the highest number and increment.
+- `lessons/NNNN-*.html` — one self-contained lesson per file, numbered sequentially. Short enough to finish in 10–15 minutes, one idea each.
+- `reference/*.html` — durable cheat sheets. Lessons are read once; these get reopened, so they carry the compressed version.
+- `assets/` — shared components. Reuse is the default: read this directory before authoring a lesson, and put anything a second lesson would duplicate here instead of inlining it.
+
+Conventions that are easy to break:
+
+- Lessons open over `file://`, where ES modules are blocked by CORS. `assets/quiz.js` is therefore a **classic script**, not a module — keep it that way, and load it with a plain `<script src>`.
+- Every lesson links `../assets/lesson.css`, carries a dated meta line, cites primary sources inline, ends with a Sources list, and reminds the reader they can ask follow-up questions.
+- Quiz options are kept within a few characters of each other and the correct answer's position is varied across questions, so neither length nor order leaks the answer.
+- These are documents, not code: `tsconfig.json`'s `*/*.ts` include and `node --test`'s discovery both ignore them. Adding a lesson never affects the build or the test run.
+
 ## Testing
 
 Tests cover only the pure functions (targets, validators, regexes). No Ollama call is mocked and none runs under test — keep LLM I/O out of testable functions so this stays true. Scripts guard their entry point with `if (import.meta.main)` so importing a module from a test never starts the chat loop.

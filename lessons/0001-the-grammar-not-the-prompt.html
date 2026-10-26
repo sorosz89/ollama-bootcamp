@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 01 · The grammar, not the prompt</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 01 · Structured output</p>
+  <h1>The grammar, not the prompt</h1>
+  <p class="standfirst">Your <code>chef.ts</code> already passes a JSON schema to Ollama. It is not asking the model nicely — it is making every other answer physically unsamplable. Knowing exactly where that guarantee stops is the whole lesson.</p>
+  <p class="meta">~12 minutes · Ollama running, <code>qwen3.5:9b</code> · 26 Oct 2026</p>
+</header>
+
+<p>You already know cloud structured output: you hand OpenAI or Anthropic a schema, and a valid object comes back. The mental model most people carry over is <em>the provider validates the reply and retries until it fits</em>. That model is wrong for Ollama, and the difference is the reason <code>check()</code> exists in your repo.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p><code>format</code> does not ask the model for JSON. It deletes every token that would break your schema before the model is allowed to pick one.</p>
+</div>
+
+<h2>The mechanism, in one pass</h2>
+
+<p>When you pass a schema rather than the string <code>"json"</code>, Ollama compiles it into a <strong>GBNF grammar</strong> — the grammar format llama.cpp uses — and installs it in the sampler. At every single token, the model produces its usual distribution of candidates, and then the grammar crosses out the ones that would make the output invalid so far. The model samples from what survives.<span class="cite"> (Clayton, 2026)</span></p>
+
+<figure class="wide" style="margin:2rem 0">
+<svg viewBox="0 0 680 150" width="100%" style="max-width:680px" role="img" aria-label="Token loop: the model proposes candidate tokens, the grammar masks invalid ones, the sampler picks from what remains, and the loop repeats.">
+  <g fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.85">
+    <rect x="8" y="42" width="130" height="54" rx="4"/>
+    <rect x="196" y="42" width="150" height="54" rx="4"/>
+    <rect x="404" y="42" width="130" height="54" rx="4"/>
+    <path d="M138 69h50M346 69h50M534 69h40v52H120v-32" stroke-dasharray="0"/>
+  </g>
+  <g fill="currentColor" font-family="SF Mono, Menlo, monospace" font-size="12">
+    <text x="73" y="64" text-anchor="middle">model</text>
+    <text x="73" y="82" text-anchor="middle" opacity="0.6">all candidates</text>
+    <text x="271" y="64" text-anchor="middle">grammar mask</text>
+    <text x="271" y="82" text-anchor="middle" opacity="0.6">invalid → forbidden</text>
+    <text x="469" y="64" text-anchor="middle">sampler</text>
+    <text x="469" y="82" text-anchor="middle" opacity="0.6">picks one token</text>
+    <text x="347" y="138" text-anchor="middle" opacity="0.6">repeat for the next token</text>
+  </g>
+  <g fill="currentColor" opacity="0.85">
+    <path d="M188 69l-8-4v8z"/><path d="M396 69l-8-4v8z"/><path d="M120 93l-4-8h8z"/>
+  </g>
+</svg>
+</figure>
+
+<p>So the <em>shape</em> is not a request that might fail. It is an invariant of the decoding loop. A missing <code>fat_g</code>, a stray apology before the opening brace, a trailing markdown fence — none of them are reachable states.</p>
+
+<div class="note"><p>This also explains the throughput cost people report: the masking step runs per token and is not parallelised, so a complicated schema can noticeably slow generation.<span class="cite"> (Clayton, 2026)</span> Your <code>Recipe</code> schema is small, so the cost is small.</p></div>
+
+<h2>Three things it still will not give you</h2>
+
+<p>The guarantee is narrow, and every gap in it is already defended somewhere in <code>chef.ts</code>. This table is the part worth remembering.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Gap</th><th>What goes wrong</th><th>Your defence</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>Truth</strong></td>
+  <td>The grammar enforces that <code>protein_g</code> is a number, never that it is <em>the right</em> number. A 9B model will cheerfully invent 45 g of protein in a cucumber.</td>
+  <td><code>check()</code> recomputes the macros and feeds the discrepancies back as a revision message.</td>
+</tr>
+<tr>
+  <td><strong>Completion</strong></td>
+  <td>Ollama does not validate the finished reply against the schema. If generation stops early — token limit, context exhausted — you get well-formed-so-far JSON with no closing braces, and <code>JSON.parse</code> throws.<span class="cite"> (Clayton, 2026)</span></td>
+  <td>Nothing yet. <code>Recipe.parse(JSON.parse(…))</code> will throw and kill the run. A real gap in exercise 01.</td>
+</tr>
+<tr>
+  <td><strong>Quality</strong></td>
+  <td>If the prompt never mentions JSON, the grammar forces a shape the model was not heading towards, so sampling happens far down the distribution: padding, whitespace, listless content. Ollama's own docs say to "instruct the model to use JSON in the prompt. Otherwise, the model may generate large amounts whitespace."<span class="cite"> (Ollama API docs)</span></td>
+  <td>Your system prompt ends with <em>"Answer only in the requested JSON."</em> — which now stops looking redundant.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="win"><p><strong>The reframe:</strong> constrained decoding moves work, it does not remove it. It takes parsing off your plate entirely and leaves <em>verification</em> wholly on it. That seam — model writes, code checks — is the thing your bootcamp is really teaching.</p></div>
+
+<h2>Do it: make the model lie to you</h2>
+
+<p>Five minutes in the terminal. The point is to see perfectly-shaped JSON carrying nonsense, and watch the feedback loop catch it.</p>
+
+<ol class="steps">
+  <li>
+    <p>From the repo root, start the chat and give it targets a vegetable cannot meet:</p>
+    <pre><code>npm run 01
+# Calories per serving: 600
+# Protein/Carbs/Fat %: 60/20/20
+# What do you feel like? > a simple cucumber and lettuce salad</code></pre>
+    <p>That asks for 90 g of protein out of salad leaves.</p>
+  </li>
+  <li>
+    <p><strong>Watch the retry log.</strong> You should see <code>attempt 1: fixing -&gt;</code> lines quoting real arithmetic. Note which problem the model fixes first, and whether fixing one breaks another.</p>
+  </li>
+  <li>
+    <p><strong>Look at what never happens.</strong> No malformed JSON. No "Sure! Here's a recipe:" preamble. No markdown fence. Every attempt parsed cleanly on the first try — that is the grammar, silently doing its job while the content is wrong.</p>
+  </li>
+  <li>
+    <p>If it survives three attempts still off target, you get <code>(still off target)</code> and the recipe prints anyway. <strong>Ask yourself:</strong> is printing a wrong answer the right behaviour for exercise 01? There is a defensible case either way — have the argument before you change it.</p>
+  </li>
+  <li>
+    <p><em>Optional, and it may not reproduce on every model:</em> delete the sentence <code>"Answer only in the requested JSON."</code> from <code>SYSTEM</code> in <code>chef.ts</code>, re-run, and look for thinner steps or padded strings. Put it back afterwards. Qwen is well-behaved enough that you may see no change at all — a null result here is still worth knowing.</p>
+  </li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "What does passing a JSON schema to format actually change?",
+    "options": [
+      "It appends your schema text onto the prompt",
+      "It validates the whole finished reply afterwards",
+      "It forbids invalid tokens when sampling each one",
+      "It retries the request until the shape fits"
+    ],
+    "answer": 2,
+    "why": "The schema becomes a GBNF grammar in the sampler. Invalid tokens are masked before the model picks one, so a wrong shape is never generated in the first place — there is nothing to validate or retry."
+  },
+  {
+    "q": "A reply comes back as truncated, unparseable JSON. What most likely happened?",
+    "options": [
+      "Generation stopped before the closing braces",
+      "The schema contained too many optional fields",
+      "The temperature was configured far too high",
+      "The grammar masked out every valid token"
+    ],
+    "answer": 0,
+    "why": "The grammar guarantees each token is valid so far, not that the model reaches the end. Hit the token or context limit and you get well-formed-so-far JSON that still fails to parse — Ollama does not check the whole response."
+  },
+  {
+    "q": "Why does chef.ts still say \"Answer only in the requested JSON\" when format already forces it?",
+    "options": [
+      "Ollama ignores the format option without it",
+      "Zod needs the prompt and schema to agree",
+      "The schema requires one matching instruction",
+      "Prompting keeps sampling near likely tokens"
+    ],
+    "answer": 3,
+    "why": "If the model is not already heading towards JSON, the grammar forces it down into unlikely parts of its distribution, and content quality drops — whitespace and padding. Ollama's docs recommend prompting for JSON alongside the schema."
+  },
+  {
+    "q": "What does check() defend against that the grammar fundamentally cannot?",
+    "options": [
+      "Fields that are missing from the reply",
+      "Values that are well formed but false",
+      "Replies that arrive in the wrong order",
+      "Models that refuse to answer at all"
+    ],
+    "answer": 1,
+    "why": "Syntax is the grammar's whole job, and it does it perfectly. Semantics — whether 45 g of protein is actually in that food — is invisible to it. That is the gap code has to close."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> <a href="https://blog.danielclayton.co.uk/posts/ollama-structured-outputs/">"How Does Ollama's Structured Outputs Work?" by Daniel Clayton</a>. Short, traces the schema → grammar → logit-mask path concretely, and is honest about the failure modes the official announcement skips. Read it against the table above and see which gap it makes you least comfortable about.</p>
+
+<p>Then skim the <code>format</code> entry in the <a href="https://github.com/ollama/ollama/blob/main/docs/api.md">official Ollama API reference</a> — one short paragraph, and the authoritative word on what is actually promised.</p>
+
+<div class="ask no-print">
+  <p><strong>I'm your teacher here — ask me things.</strong> Good questions to come back with: <em>"what should chef.ts do when the parse throws?"</em>, <em>"how do I see the grammar Ollama built?"</em>, <em>"does a bigger schema measurably slow my model down?"</em>, or anything in the lesson that landed badly. Follow-ups are the point, not an interruption.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference — <code>format</code>, <code>options</code>, <code>keep_alive</code></a>. Official.</li>
+  <li><a href="https://ollama.com/blog/structured-outputs">Ollama blog — Structured outputs</a>. Official; source of the "prompt for JSON too" and "temperature 0" tips.</li>
+  <li><a href="https://blog.danielclayton.co.uk/posts/ollama-structured-outputs/">Daniel Clayton — How Does Ollama's Structured Outputs Work?</a> Mechanism and failure modes.</li>
+  <li><a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md">llama.cpp — GBNF grammar guide</a>. The layer underneath.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../reference/structured-output.html">Reference: Structured output cheat sheet →</a>
+  <a href="../MISSION.md">Mission</a>
+  <a href="../RESOURCES.md">Resources</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>
