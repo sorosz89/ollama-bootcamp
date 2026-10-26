@@ -9,6 +9,7 @@
 ## Teaching preferences
 - 10–15 minute lessons, one win each.
 - Knows cloud LLM APIs well — do not re-teach messages/roles/tokens/prompting. The delta is the local runtime.
+- **Lead with the plain-language mental model; put measurement second** (said of Lesson 02, 26 Oct 2026: "it is too much to me for now"). Fluency with cloud APIs did not transfer to local-runtime internals as much as I assumed — being senior in one area does not make someone a beginner-proof reader in the adjacent one. Default shape from here: a Part 1 that is complete on its own (idea, jargon table, one command, a short quiz, a three-point takeaway), then a clearly marked Part 2 for instruments and edge cases. Keep the depth; just stop opening with it.
 
 ## Decisions
 - **The teaching workspace is tracked in the public repo** (decided 26 Oct 2026). The learning trail is portfolio material in its own right, so lessons, reference sheets, mission and learning records all ship alongside the exercises. Write them for a reader who is not Sandor: no private notes, no half-finished drafts committed.

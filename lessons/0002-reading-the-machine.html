@@ -12,18 +12,161 @@
 <header class="masthead">
   <p class="kicker">Ollama Bootcamp · Lesson 02 · Running models well</p>
   <h1>Reading the machine</h1>
-  <p class="standfirst">Every Ollama reply ships with a timing receipt. Once you can read it, "the model feels slow" turns into a number with a cause — and most of the folklore about local models turns out to be checkable.</p>
-  <p class="meta">~14 minutes · Ollama running, <code>qwen3.5:9b</code> · all figures measured on this machine, 26 Oct 2026</p>
+  <p class="standfirst">A local model has two speeds, and almost every "why is this slow?" question is really asking about one of them. Part 1 is the idea, in plain words. Part 2 measures it on your own machine.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~12 minutes, and it keeps · Ollama running, <code>qwen3.5:9b</code> · 26 Oct 2026</p>
 </header>
 
-<p>In <a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> you saw that the schema guarantees shape and leaves truth to you. This lesson is the other half of running a model locally: nobody is managing the hardware for you, so the performance characteristics are now yours to read.</p>
+<p>In <a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> you saw that the schema guarantees shape and leaves truth to you. This lesson is the other half of running a model locally: nobody is managing the hardware for you, so how fast it goes is now your problem to understand.</p>
+
+<p><strong>Read Part 1 and stop if you like.</strong> It is the whole idea and one command. Part 2 is the measuring kit — useful when something is actually slow and you need to know why. It will still be here.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>No code, no numbers to memorise. One command at the end.</p>
+</div>
+
+<h2>What happens when you press enter</h2>
+
+<p>You send a prompt. The model does two completely different jobs with it, in order.</p>
+
+<p>First it <strong>reads</strong> everything you sent — your question, the system prompt, the whole conversation so far. It can look at all of that more or less at once, so this part is fast, and it happens before a single word appears on your screen.</p>
+
+<p>Then it <strong>writes</strong> the answer, and here it has no choice but to go one piece at a time. Each new word depends on the words before it, so they cannot be produced in parallel. This is the part you watch streaming across the terminal.</p>
+
+<p>An analogy that holds up well enough: reading a page is quick because your eyes can move around it freely; writing a page by hand is slow because you can only form one letter at a time. Same brain, very different speeds.</p>
 
 <div class="keystone">
   <span class="label">The keystone</span>
-  <p>A local model has <strong>two</strong> speeds, not one. <em>Prefill</em> chews through your prompt in parallel; <em>decode</em> emits the reply one token at a time. "Tokens per second" means nothing until you say which one.</p>
+  <p>A local model has <strong>two</strong> speeds, not one: the speed it <em>reads</em> your prompt, and the speed it <em>writes</em> the reply. They differ by roughly ten times. "Tokens per second" means nothing until you say which one you mean.</p>
+</div>
+
+<h2>Why you should care</h2>
+
+<p>Because "it feels slow" is two completely different complaints with two different fixes, and you cannot tell them apart by feel alone — only by where the slowness sits.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>What you notice</th><th>What is actually happening</th><th>Where to look</th></tr></thead>
+<tbody>
+<tr><td>A long pause, <em>then</em> text at a normal speed</td><td>Reading. Your prompt was long, or the model had to load from disk first.</td><td>Shorten the conversation, or keep the model in memory.</td></tr>
+<tr><td>Text appears immediately but crawls out</td><td>Writing. This is the model's raw generation speed.</td><td>A smaller model, or check it is on the GPU.</td></tr>
+<tr><td><em>Everything</em> is dramatically slow</td><td>The model did not fit in memory, so part of it is running on the CPU.</td><td>The big one. <code>ollama ps</code> tells you in one line.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>That third row is worth more than the other two combined. A model that does not fit in memory runs roughly an order of magnitude slower, and nothing else you tune will rescue it.</p>
+
+<h2>The five words you need</h2>
+
+<p>Local-model writing is thick with jargon, most of it naming something simple.</p>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>token</td><td>A chunk of text, usually about ¾ of a word. Models count in these, not characters. "Gluten-free" is a few tokens.</td></tr>
+<tr><td>prefill</td><td>The reading phase. Also called <em>prompt eval</em> — same thing, two names.</td></tr>
+<tr><td>decode</td><td>The writing phase. Also called <em>eval</em> or <em>generation</em>.</td></tr>
+<tr><td>context window</td><td>The most text the model can hold in mind at once, counted in tokens. Your whole conversation has to fit.</td></tr>
+<tr><td>cold start</td><td>The wait while the model is loaded from disk into memory. Happens on the first request after a quiet spell, not on every one.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="detour">
+  <span class="label">Skippable</span>
+  <p>You will also meet <em>KV cache</em>. It is the model's working memory of the text it has already read, so it does not have to re-read the unchanged start of a conversation every turn. It lives in RAM and grows as the conversation does — which is the mechanism behind a couple of things in Part 2.</p>
+</div>
+
+<h2>Do it: one command</h2>
+
+<p>This is the entire Part 1 exercise. Add <code>--verbose</code> to the normal chat command and Ollama prints its own timings after every reply.</p>
+
+<ol class="steps">
+  <li>
+    <p>Start a chat that reports its own speed:</p>
+    <pre><code>ollama run qwen3.5:9b --verbose</code></pre>
+  </li>
+  <li>
+    <p>Ask it anything — <em>"explain why rice flour behaves differently from wheat flour"</em> will do. Watch for the pause before the first word, then the speed of the words.</p>
+  </li>
+  <li>
+    <p>Under the reply you will get a block of statistics. Two lines matter:</p>
+    <pre><code>prompt eval rate:    120.00 tokens/s     ← reading
+eval rate:            53.00 tokens/s     ← writing</code></pre>
+    <p><strong>They should differ a lot.</strong> That gap is the lesson. Everything in Part 2 is a consequence of it.</p>
+  </li>
+  <li>
+    <p>Ask a second question in the same chat and compare. Then type <code>/bye</code>.</p>
+  </li>
+  <li>
+    <p>In another terminal, while the model is still loaded, run <code>ollama ps</code> and find the <code>PROCESSOR</code> column. You want it to say <code>100% GPU</code>. If it ever says anything with CPU in it, that is your answer to almost any speed question.</p>
+  </li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Part 1 · retrieval practice" data-hint="Three questions on the idea, not the numbers. Answer from memory — a wrong answer here teaches you more than a right one.">
+<script type="application/json">
+[
+  {
+    "q": "Why can a model read your prompt faster than it writes the reply?",
+    "options": [
+      "Reading uses much less of the memory",
+      "It can read the whole prompt at once",
+      "Prompts are shorter than most replies",
+      "Each written word gets checked first"
+    ],
+    "answer": 1,
+    "why": "Reading can happen in parallel — the whole prompt at once. Writing cannot: each word depends on the ones before it, so they come out strictly one at a time. That is the entire reason for the two speeds."
+  },
+  {
+    "q": "ollama ps reports 55%/45% CPU/GPU. What does that tell you?",
+    "options": [
+      "The model did not all fit in memory",
+      "Your context window is far too large",
+      "Two different models are loaded now",
+      "The model needs pulling down again"
+    ],
+    "answer": 0,
+    "why": "A split means part of the model spilled onto the CPU, which runs it roughly ten times slower. Fix this before tuning anything else — nothing else you change will make up the difference."
+  },
+  {
+    "q": "The first reply after lunch takes seconds; the next ones are instant. Why?",
+    "options": [
+      "The prompt was unusually long then",
+      "Your GPU was busy with other work",
+      "The model was loading from the disk",
+      "The context window had filled right up"
+    ],
+    "answer": 2,
+    "why": "A cold start. Ollama unloads an idle model after five minutes, so the next request waits while it loads back into memory. The model is not thinking — it is arriving."
+  }
+]
+</script>
+</div>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Reading and writing are different speeds.</strong> Say which one you mean before quoting a tokens-per-second number.</li>
+    <li><strong>A pause before the first word is not slowness</strong> — it is a long prompt, or a model loading from disk.</li>
+    <li><strong><code>ollama ps</code> should say <code>100% GPU</code>.</strong> Anything else is the problem, before you look at anything else.</li>
+  </ol>
+</div>
+
+<p>That is Part 1. If you stop here you have the mental model and the one diagnostic that matters most — genuinely enough to work with. <a href="#part2">Part 2</a> is for the day something is slow and you want the actual numbers.</p>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Measuring it on your machine</h2>
+  <p>The same ideas with instruments attached: exact timings, what they cost your own exercise, and one measured result that contradicts the obvious assumption. Come back to this whenever you like.</p>
 </div>
 
 <h2>The receipt</h2>
+
+<p>Part 1's <em>reading</em> and <em>writing</em> have official names in the API, and this is where you meet them: reading is <code>prompt_eval</code>, writing is <code>eval</code>. Same two phases, now with a stopwatch on each.</p>
 
 <p>Set <code>"stream": false</code> and every response carries six timing fields. All durations are in <strong>nanoseconds</strong>.<span class="cite"> (Ollama API reference)</span></p>
 
@@ -75,6 +218,11 @@ qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minut
 
 <p><strong><code>SIZE</code> is not the file size.</strong> It is the live footprint: weights plus the KV cache for the context. Watch it grow as you feed longer prompts.</p>
 
+<div class="detour">
+  <span class="label">The deep end — skippable</span>
+  <p>What follows is the most advanced thing in this lesson: a measured result that contradicts what the documentation implies. It is here because it is true and because it shows what measuring is <em>for</em>, not because you need it to use Ollama. Skip to <a href="#chefcost">what this costs chef.ts</a> if you would rather.</p>
+</div>
+
 <p>Now the surprise. <code>CONTEXT</code> reads <strong>4096</strong> here, which matches the documented default for machines under 24 GiB of VRAM.<span class="cite"> (Context length docs)</span> The obvious conclusion is that a conversation longer than 4096 tokens gets truncated and the system prompt silently falls out the back. <strong>That is not what happens on this setup.</strong> Measured:</p>
 
 <div class="table-scroll">
@@ -95,7 +243,7 @@ qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minut
 
 <p>So the real cost of a long history here is not amnesia. It is <strong>two minutes of prefill and 3 GB of extra RAM</strong>. That is a latency and memory bill, and it arrives quietly.</p>
 
-<h2>What this costs <code>chef.ts</code></h2>
+<h2 id="chefcost">What this costs <code>chef.ts</code></h2>
 
 <p>Measured against the actual exercise, one retry round at a time:</p>
 
@@ -115,6 +263,8 @@ qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minut
 <div class="win"><p><strong>The design question this raises:</strong> does <code>chef.ts</code> actually benefit from remembering wish #1 while answering wish #3? If not, the history could reset per wish — cheaper, faster, and arguably better recipes. If so, it should be trimmed deliberately rather than by accident. Either way it should be a decision, not a side effect of a <code>while</code> loop.</p></div>
 
 <h2>Do it: take your own measurements</h2>
+
+<p>Part 1 had you read Ollama's own numbers. This does it from code, so you can change one thing and watch what moves.</p>
 
 <ol class="steps">
   <li>
@@ -138,9 +288,9 @@ qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minut
   </li>
 </ol>
 
-<h2>Check yourself</h2>
+<h2>Check yourself again</h2>
 
-<div class="quiz" data-title="Retrieval practice">
+<div class="quiz" data-title="Part 2 · retrieval practice">
 <script type="application/json">
 [
   {

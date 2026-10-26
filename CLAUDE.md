@@ -52,6 +52,7 @@ Conventions that are easy to break:
 
 - Lessons open over `file://`, where ES modules are blocked by CORS. `assets/quiz.js` is therefore a **classic script**, not a module — keep it that way, and load it with a plain `<script src>`.
 - Every lesson links `../assets/lesson.css`, carries a dated meta line, cites primary sources inline, ends with a Sources list, and reminds the reader they can ask follow-up questions.
+- **Lead with the idea, not the instruments.** A lesson with any depth to it is built in two tiers: a Part 1 that stands alone (plain language, a jargon table, one command, its own quiz, a three-point takeaway) and a Part 2 behind a `.tier` divider for measurement and edge cases. Components for this are in the stylesheet: `.tier`, `.jargon`, `.takeaway`, `.detour` (a skippable aside). Depth is never cut to achieve this — it is moved below the fold.
 - Quiz options are kept within a few characters of each other and the correct answer's position is varied across questions, so neither length nor order leaks the answer.
 - Lessons and reference sheets are documents, not code, and adding one never affects the build or the test run. The exception is `assets/*.ts` — tooling the lessons drive the reader to run (`bench.ts`). Those *are* covered by `tsconfig.json`'s `*/*.ts` include and must typecheck, which is deliberate: a lesson that tells the reader to run a broken script is worse than no lesson. They are not test files, so `node --test` still ignores them.
 

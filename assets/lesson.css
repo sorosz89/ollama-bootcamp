@@ -138,3 +138,49 @@ th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-t
   a::after { content: " (" attr(href) ")"; font-size: 0.75em; color: #555; word-break: break-all; }
   .quiz-opt a::after, .footer-nav a::after { content: ""; }
 }
+
+/* ---- two-tier lessons: a plain-language Part 1, a deeper Part 2 ----
+   Lead with the mental model; put measurement and edge cases behind the divider. */
+.tier {
+  margin: 3.5rem 0 2rem;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--code-bg);
+}
+.tier .label {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint);
+  display: block; margin-bottom: 0.4rem;
+}
+.tier h2 { margin: 0 0 0.4rem; border-top: none; padding-top: 0; font-size: 1.25rem; }
+.tier p { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
+
+/* ---- plain-language jargon table: the word, what it really means ---- */
+.jargon td:first-child { font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
+.jargon td:nth-child(2) { color: var(--ink-soft); }
+
+/* ---- the short version, for readers who stop here ---- */
+.takeaway {
+  border: 2px solid var(--good); border-radius: 4px;
+  background: var(--good-soft); padding: 1.1rem 1.3rem; margin: 2rem 0;
+}
+.takeaway .label {
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--good); display: block; margin-bottom: 0.6rem;
+}
+.takeaway ol { margin: 0; padding-left: 1.2rem; }
+.takeaway li { margin-bottom: 0.4rem; }
+.takeaway li:last-child { margin-bottom: 0; }
+
+/* ---- an aside a beginner can skip without losing the thread ---- */
+.detour {
+  border-left: 3px solid var(--rule); background: transparent;
+  padding: 0.2rem 0 0.2rem 1rem; margin: 1.5rem 0;
+  font-size: 0.9rem; color: var(--ink-soft);
+}
+.detour .label {
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 0.25rem;
+}
+.detour > :last-child { margin-bottom: 0; }
