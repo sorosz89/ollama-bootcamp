@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 09 · Designing an exercise from a finding</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 09 · Turning it into the portfolio</p>
+  <h1>Designing an exercise from a finding</h1>
+  <p class="standfirst">The mission was never "learn about Ollama". It was to build a series of small exercises sharp enough to survive scrutiny. This lesson is the one that produces them.</p>
+  <p class="meta">Part 1 ~7 minutes · Part 2 ~10 minutes · 26 Oct 2026</p>
+</header>
+
+<p>By now you have a pile of measurements, a corrected assumption or two, and several things that surprised you. This is how one of those becomes exercise 02.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>An exercise is not a demo. It is one surprise, made reproducible.</p>
+</div>
+
+<h2>What makes an exercise worth publishing</h2>
+
+<p>The test is narrow: <strong>does someone who works through it end up believing something they did not believe before?</strong> A demo shows that a thing can be done. An exercise changes what the reader expects.</p>
+
+<p>Exercise 01 passes because of one sentence: <em>the LLM writes, Python checks</em> — now TypeScript checks. A reader who has not met that split assumes the model should be able to do arithmetic, watches it fail, and leaves with a different model of what these systems are for.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>Start from the <strong>surprise</strong>, not the topic. "Structured output" is a topic. "The schema is enforced mechanically, so the shape is guaranteed and the numbers are still invented" is a surprise — and only the second one can be built into something.</p>
+</div>
+
+<h2>Your candidate surprises</h2>
+
+<p>Everything below came out of this course, measured on your machine. Each is a potential exercise:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Finding</th><th>From</th><th>Would make an exercise about…</th></tr></thead>
+<tbody>
+<tr><td>A reply can hit the token cap and still be valid JSON up to that point</td><td><a href="0003-when-the-model-cant-comply.html">03</a></td><td>Failure handling — the one that fixes a real bug, so it has a built-in motive.</td></tr>
+<tr><td>A nested schema cost 4× the tokens and then failed outright</td><td><a href="0005-schemas-a-small-model-can-fill.html">05</a></td><td>Schema design as a latency and reliability decision.</td></tr>
+<tr><td>A "4096" context swallowed 48,050 tokens without complaint</td><td><a href="0002-reading-the-machine.html">02</a></td><td>Trusting your measurements over the documentation.</td></tr>
+<tr><td>No positional effect at 8k, despite a famous paper</td><td><a href="0006-does-a-bigger-context-make-it-dumber.html">06</a></td><td>Replication — and reporting null results honestly.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The third and fourth are the most interesting and the hardest to build, because their conclusions are "it depends" and "nothing happened". Those are true and valuable, and they are also difficult to wrap a satisfying exercise around. The first is the easiest and the most useful.</p>
+
+<h2>The shape every exercise here follows</h2>
+
+<p>From the repo's own <code>CLAUDE.md</code>, which you can now read as a specification:</p>
+
+<ul>
+  <li><strong>One directory</strong>, <code>NN-exercise-name/</code>, holding a README, one script, and a test file.</li>
+  <li><strong>The model generates, code verifies</strong>, problems feed back, retries are bounded.</li>
+  <li><strong>Tests cover the pure functions only.</strong> No mocked Ollama, no model under test — which forces the interesting logic out of the I/O path, where it is testable anyway.</li>
+  <li><strong>A README</strong> with the lesson in one line, a mermaid diagram of the loop, Run / Steps to learn / Stretch goals / Caveats.</li>
+</ul>
+
+<p>The constraint that does the most work is the testing rule. "No Ollama in tests" sounds like a CI convenience; in practice it forces you to separate judgement from verification, which is the whole pedagogical point.</p>
+
+<h2>Do it: pick one</h2>
+
+<ol class="steps">
+  <li><p>Choose a finding from the table — or a better one of your own.</p></li>
+  <li><p>Write the one-line lesson first, before any code. If you cannot state it in a sentence, the exercise is not ready.</p></li>
+  <li><p>Write the Caveats section second. What will this exercise <em>not</em> prove? Naming that early stops the exercise overclaiming later.</p></li>
+  <li><p>Only now write the script. If the one-liner and the caveats are right, the code is mostly obvious.</p></li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Start from a surprise</strong>, not a topic. If nothing surprised you, there is no exercise yet.</li>
+    <li><strong>Write the one-line lesson and the caveats before the code.</strong></li>
+    <li><strong>Keep the model out of the tests.</strong> It forces the design that makes the lesson legible.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Working one through</h2>
+  <p>Exercise 02, designed end to end, so the next one is mechanical.</p>
+</div>
+
+<h2>The candidate: a schema budget</h2>
+
+<p>Taking the <a href="0005-schemas-a-small-model-can-fill.html">Lesson 05</a> finding, because it is measurable, surprising, and nobody writes about it.</p>
+
+<p><strong>One-line lesson:</strong> <em>the shape of your schema is a latency and reliability decision, and you can measure it in seconds.</em></p>
+
+<p><strong>The seam:</strong> the model fills schemas; code measures what each shape cost and decides whether it was worth it. Same split as exercise 01, applied to the request rather than the reply.</p>
+
+<p><strong>What the reader does:</strong> runs the same prompt through three schema shapes, sees the token counts diverge, watches the nested one fail, then flattens it and watches it recover.</p>
+
+<h2>What the pure functions are</h2>
+
+<p>This is where the design gets decided, because it is what the tests can reach:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Function</th><th>Pure?</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td><code>schemaDepth(schema)</code> — how deeply nested</td><td>Yes</td><td>Known schemas, known depths.</td></tr>
+<tr><td><code>estimateFields(schema)</code> — leaves to be filled</td><td>Yes</td><td>Flat vs nested counts.</td></tr>
+<tr><td><code>verdict(tokens, cap, doneReason)</code> — ok / truncated / expensive</td><td>Yes</td><td>Table of cases, including the boundary.</td></tr>
+<tr><td><code>runCase(schema, prompt)</code> — the actual call</td><td>No</td><td>Not tested. Keep it thin.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Three pure functions, one thin I/O wrapper. The tests run in milliseconds with no model, and the reader can see exactly which decisions are deterministic.</p>
+
+<h2>The README, in order</h2>
+
+<ol>
+  <li><strong>One line:</strong> "Schema shape is a latency decision. The same recipe, three shapes: 290 tokens, 332 tokens, or a failure."</li>
+  <li><strong>Mermaid diagram:</strong> prompt → three schemas → three measurements → a verdict table.</li>
+  <li><strong>Run:</strong> the command, and which model it assumes.</li>
+  <li><strong>Steps to learn:</strong> run it; predict the nested result before looking; flatten it; re-run.</li>
+  <li><strong>Stretch goals:</strong> add a fourth shape; try it on a smaller model; measure whether one nested call beats three flat ones.</li>
+  <li><strong>Caveats:</strong> one model, one machine, one prompt. Token counts vary run to run. A nested schema that fits comfortably is not slow <em>because</em> it is nested — it is slow because it is long.</li>
+</ol>
+
+<p>That last caveat matters: it is the honest version of the finding, and without it the exercise teaches a superstition rather than a measurement.</p>
+
+<h2>The traps</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Trap</th><th>Looks like</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><strong>Teaching two things</strong></td><td>"…and while we're here, let's also cover streaming."</td><td>Two lessons. The reader's working memory is the binding constraint.</td></tr>
+<tr><td><strong>Overclaiming</strong></td><td>"Nested schemas are slow."</td><td>"On this model, this prompt, this machine, nesting cost 4×."</td></tr>
+<tr><td><strong>Untestable design</strong></td><td>All the logic inside the API call.</td><td>Pull the decisions into pure functions. The rule forces the design.</td></tr>
+<tr><td><strong>A demo, not an exercise</strong></td><td>Reader runs it, says "neat", learns nothing.</td><td>Make them predict before they run. A wrong prediction is the lesson.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The prediction step is the cheapest quality improvement available. "Guess which one fails before you run it" converts passive reading into a test the reader gives themselves — the same reason every lesson here has a quiz.</p>
+
+<h2>Do it: build exercise 02</h2>
+
+<ol class="steps">
+  <li><p>Create <code>02-schema-budget/</code> with a README, a script and a test file.</p></li>
+  <li><p>Lift the three schemas from <code>assets/schema-bench.ts</code> — the measuring is done; this is about shaping it into a lesson.</p></li>
+  <li><p>Write the three pure functions and their tests first. Confirm <code>npm test</code> still passes without Ollama running.</p></li>
+  <li><p>Add the row to the README index table and the <code>02</code> script to <code>package.json</code>, as <code>CLAUDE.md</code> requires.</p></li>
+  <li><p>Reread your Caveats section as a sceptic. If any sentence claims more than you measured, cut it.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "What separates an exercise from a demo?",
+    "options": [
+      "It ships with a full test suite",
+      "It changes what the reader expects",
+      "It runs without needing a model",
+      "It covers a more advanced subject"
+    ],
+    "answer": 1,
+    "why": "A demo shows something works. An exercise overturns an expectation — which is why you start from a surprise rather than a topic, and why asking for a prediction first is the cheapest improvement available."
+  },
+  {
+    "q": "Why keep the model out of the test suite?",
+    "options": [
+      "Tests would otherwise run too slowly",
+      "Mocking an LLM is inherently unreliable",
+      "It forces logic out of the I/O path",
+      "Continuous integration has no GPU"
+    ],
+    "answer": 2,
+    "why": "Fast CI is the side effect. The real benefit is that an untestable design becomes obvious immediately: if nothing can be tested, you have put all the decisions inside the API call."
+  },
+  {
+    "q": "In what order should an exercise be written?",
+    "options": [
+      "Lesson line, caveats, then the code",
+      "Code first, then document what it does",
+      "Tests first, then code, then a README",
+      "Diagram, then code, then the caveats"
+    ],
+    "answer": 0,
+    "why": "The one-line lesson proves there is something to teach; the caveats bound the claim before you are invested in it. With both settled the code is largely determined."
+  },
+  {
+    "q": "Your finding is that nothing happened — no effect at all. What now?",
+    "options": [
+      "Pick a different finding to build on",
+      "Rerun it until an effect turns up",
+      "Publish it as a replication result",
+      "Widen the experiment to be certain"
+    ],
+    "answer": 2,
+    "why": "A defensible null result is publishable and rare — almost nobody writes down what they failed to reproduce. It is harder to make satisfying than a positive finding, which is exactly why it stands out."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> this repo's own <code>CLAUDE.md</code> and <code>01-gluten-free-chef/README.md</code>. They are the specification and the worked example, and you have now read enough to critique both rather than just follow them. If something in them is wrong, changing it is the most advanced thing this course can ask of you.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> The useful ones now are about your own work: <em>"is this one-liner actually surprising?"</em>, <em>"are these caveats honest enough?"</em>, <em>"which of my findings is worth building?"</em> Bring me a draft README and I will argue with it.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li>This repo's <code>CLAUDE.md</code> — the exercise pattern, structure and testing rules.</li>
+  <li><code>01-gluten-free-chef/</code> — the worked example every point above generalises from.</li>
+  <li>Findings referenced: measured across Lessons 02, 03, 05 and 06 on this machine, 26 Oct 2026.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0008-staying-fast-in-something-real.html">← Lesson 08</a>
+  <a href="../MISSION.md">Mission</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

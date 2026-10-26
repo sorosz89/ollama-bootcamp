@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Choosing a model</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Reference sheet</p>
+  <h1>Choosing a model</h1>
+  <p class="standfirst">The arithmetic of what fits, what the tags mean, and what the conversation costs on top.</p>
+  <p class="meta">Checked 26 Oct 2026 · figures from a 24 GB Apple Silicon Mac</p>
+</header>
+
+<h2>The arithmetic</h2>
+
+<pre><code>weights  ≈  parameters (billions) × 0.7 GB        # at the usual ~4-bit quantization
+budget   =  total RAM − what the OS needs (~5 GB on a Mac)
+fits if:    weights ≤ 0.6 × total RAM             # the rest is context + headroom</code></pre>
+
+<p>Checked here: <code>qwen3.5:9b</code> is 9.7B parameters and 7.6 GB on disk — 0.78 GB per billion.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Total RAM</th><th>Comfortable</th><th>Stretch</th><th>Don't</th></tr></thead>
+<tbody>
+<tr><td>8 GB</td><td>3–4B</td><td>7B at a small context</td><td>Anything ≥ 9B</td></tr>
+<tr><td>16 GB</td><td>7–9B</td><td>12–14B</td><td>≥ 30B</td></tr>
+<tr><td>24 GB</td><td>9–14B</td><td>24B, watching <code>PROCESSOR</code></td><td>70B (~45 GB)</td></tr>
+<tr><td>32 GB+</td><td>24–32B</td><td>MoE models</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Reading a quantization tag</h2>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>Q4</td><td>~4 bits per weight. Q2–Q8 exist; lower is smaller and worse.</td></tr>
+<tr><td>_K</td><td>k-quant: spends more bits on the layers that need them. Beats the older flat methods at equal size.</td></tr>
+<tr><td>_S / _M / _L</td><td>Small, medium, large within the family.</td></tr>
+<tr><td>nvfp4, mxfp4</td><td>Newer 4-bit float formats. Not GGUF k-quants — the size arithmetic still holds. <code>qwen3.5:9b</code> is <code>nvfp4</code>.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Quant</th><th>7B size</th><th>Perplexity vs FP16</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Q4_K_M</td><td>3.80 GB</td><td>+0.0535</td><td><strong>Start here.</strong> The community default.</td></tr>
+<tr><td>Q5_K_S</td><td>4.33 GB</td><td>+0.0353</td><td>Low loss, if you have the room.</td></tr>
+<tr><td>Q5_K_M</td><td>4.45 GB</td><td>+0.0142</td><td>Very low loss. Worth it when memory is spare.</td></tr>
+<tr><td>Q8_0 / F16 / F32</td><td>6.7 / 13 / 26 GB</td><td>~0</td><td>Marked <em>not recommended</em>: far more RAM, much slower, imperceptibly better.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="cite">Figures from llama.cpp discussion #2094, for a 7B model.</p>
+
+<h2>What the conversation costs</h2>
+
+<p>The KV cache grows with the context you actually use. Measured here with <code>qwen3.5:9b</code>:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Context in use</th><th><code>SIZE</code> in <code>ollama ps</code></th></tr></thead>
+<tbody>
+<tr><td>~50 tokens</td><td>7.7 GB</td></tr>
+<tr><td>7,250 tokens</td><td>9.1 GB</td></tr>
+<tr><td>48,050 tokens</td><td>11 GB</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Default context by VRAM: <strong>&lt;24 GiB → 4k</strong>, 24–48 GiB → 32k, ≥48 GiB → 256k. Raise with <code>OLLAMA_CONTEXT_LENGTH=64000 ollama serve</code>; agents and coding tools want ≥64k.</p>
+
+<h2>Commands</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Command</th><th>Tells you</th></tr></thead>
+<tbody>
+<tr><td><code>ollama show &lt;model&gt;</code></td><td>Parameters, quantization, <em>advertised</em> context length, capabilities.</td></tr>
+<tr><td><code>ollama list</code></td><td>On-disk size of what you have pulled.</td></tr>
+<tr><td><code>ollama ps</code></td><td>Live footprint, GPU/CPU split, <em>allocated</em> context.</td></tr>
+<tr><td><code>ollama stop &lt;model&gt;</code></td><td>— frees the memory immediately.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn"><p><strong>Advertised ≠ allocated.</strong> <code>ollama show</code> reports what the model supports; <code>ollama ps</code> reports what it was given. Measured here: 262,144 advertised, 4,096 allocated. Always check the second one.</p></div>
+
+<h2>Memory you can buy back</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Setting</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>OLLAMA_FLASH_ATTENTION=1</code></td><td>Significantly reduces memory as context grows. Automatic where supported.</td></tr>
+<tr><td><code>OLLAMA_KV_CACHE_TYPE</code></td><td>Quantizes the conversation cache (default <code>f16</code>). Needs flash attention. Global — affects every model.</td></tr>
+<tr><td>Lower <code>num_ctx</code></td><td>The bluntest and most reliable saving.</td></tr>
+</tbody>
+</table>
+</div>
+
+<nav class="footer-nav">
+  <a href="glossary.html">Glossary</a>
+  <a href="../index.html">All lessons</a>
+  <a href="../lessons/0004-fitting-a-model-in-memory.html">← Lesson 04</a>
+  <a href="performance.html">Reference: Performance</a>
+  <a href="https://github.com/ggml-org/llama.cpp/discussions/2094">llama.cpp quantization table</a>
+</nav>
+
+</main>
+</body>
+</html>

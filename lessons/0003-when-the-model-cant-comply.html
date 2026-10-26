@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 03 · When the model can't comply</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 03 · Making the output trustworthy</p>
+  <h1>When the model can't comply</h1>
+  <p class="standfirst">Lesson 01 found a hole in your exercise and left it open: a reply that stops halfway is still perfectly valid JSON right up to the point it stops. Here is how to see it coming, and what a retry loop should do when it runs out of road.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~10 minutes · measured on this machine, 26 Oct 2026</p>
+</header>
+
+<p>Every call to a local model has three possible endings, and your code currently handles one of them.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>Three endings, one habit to build. No new tools.</p>
+</div>
+
+<h2>Three ways a reply ends</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Ending</th><th>What you get</th><th>Who can fix it</th></tr></thead>
+<tbody>
+<tr><td><strong>It finished</strong></td><td>Complete, schema-valid JSON.</td><td>Nobody needs to — but it may still be <em>wrong</em>, which is Lesson 01's problem.</td></tr>
+<tr><td><strong>It ran out of room</strong></td><td>JSON that is valid up to the character it stopped at, and then simply stops. No closing brace.</td><td>You. Give it more room, or ask for less.</td></tr>
+<tr><td><strong>It never arrived</strong></td><td>An error: Ollama not running, model not pulled, request aborted.</td><td>You, usually before the program runs at all.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The middle one is the interesting ending, because it does not look like a failure from the model's side. The grammar from <a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> did its job perfectly: every token it emitted was valid. It simply hit a limit and stopped mid-word.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>The reply tells you how it ended, in a field called <code>done_reason</code>. <strong>Check how it ended before you try to parse it.</strong> A truncated reply is not a parsing problem, and catching it as one hides the real cause.</p>
+</div>
+
+<h2>Why <code>try/catch</code> alone is not enough</h2>
+
+<p>You could wrap the parse in a <code>try</code> and move on. Many people do. The trouble is that the exception you catch says <em>"Unterminated string in JSON at position 109"</em> — which tells you the shape was broken, not <em>why</em>, and the two whys need opposite fixes:</p>
+
+<ul>
+  <li>Ran out of room → <strong>raise the limit, or shrink the request.</strong> Retrying the same call unchanged will fail the same way, forever.</li>
+  <li>Genuinely malformed → something is wrong with your schema or the server, and retrying might help.</li>
+</ul>
+
+<p>Telling them apart costs one <code>if</code>. Confusing them costs you a retry loop that spins three times and achieves nothing.</p>
+
+<h2>The habit</h2>
+
+<pre><code>const res = await ollama.chat({ /* … */ });
+
+if (res.done_reason === "length") {
+  // Hit the generation cap. Parsing is pointless — the reply is incomplete.
+  // Raise num_predict, or ask for a smaller object.
+}
+
+const value = Schema.parse(JSON.parse(res.message.content));</code></pre>
+
+<p>Three lines, in front of every parse. That is the whole lesson in Part 1.</p>
+
+<h2>Do it: break it on purpose</h2>
+
+<ol class="steps">
+  <li>
+    <p>Open <code>01-gluten-free-chef/chef.ts</code> and find the <code>ollama.chat</code> call. Add a deliberately tiny cap to its options:</p>
+    <pre><code>options: { temperature: 0.3, num_predict: 60 },</code></pre>
+  </li>
+  <li>
+    <p>Run <code>npm run 01</code> and ask for anything. <strong>It will crash</strong>, with a <code>SyntaxError</code> from <code>JSON.parse</code> and a stack trace. That is the bug Lesson 01 predicted, reproduced on demand.</p>
+  </li>
+  <li>
+    <p>Read the error. Notice it says nothing about running out of room — the symptom and the cause look unrelated, which is exactly why this one is worth knowing by sight.</p>
+  </li>
+  <li>
+    <p>Put <code>num_predict</code> back (or delete it). Leave the bug in place for now: Part 2 fixes it properly, and it is more satisfying to fix something you have watched break.</p>
+  </li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>A reply can stop early</strong> and still be valid JSON up to that point. The grammar cannot prevent it.</li>
+    <li><strong><code>done_reason</code> tells you how it ended.</strong> <code>"length"</code> means it ran out of room.</li>
+    <li><strong>Check before you parse.</strong> A truncation caught as a parse error sends you hunting in the wrong place.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Building a loop that gives up well</h2>
+  <p>The measured behaviour, the three values of <code>done_reason</code>, and what to do on the attempt that does not work.</p>
+</div>
+
+<h2>What truncation actually looks like</h2>
+
+<p>Three calls for the same recipe, with the cap set lower and lower. Measured here:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th><code>num_predict</code></th><th><code>done_reason</code></th><th>Last characters of the reply</th><th><code>JSON.parse</code></th></tr></thead>
+<tbody>
+<tr><td>40</td><td><code>"length"</code></td><td><code>…"ingredients": [ { "name": "Chicken</code></td><td>Unterminated string</td></tr>
+<tr><td>120</td><td><code>"length"</code></td><td><code>…"steps": [ "Preheat oven to 20</code></td><td>Unterminated string</td></tr>
+<tr><td>600</td><td><code>"length"</code></td><td><code>…"Serve immediately."</code></td><td>Expected ',' or ']'</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Note the third row. Six hundred tokens produced something that <em>looks</em> finished — a complete final sentence, a closing quote — and still fails, because the arrays and braces around it were never closed. You cannot eyeball this. You have to check the field.</p>
+
+<div class="detour">
+  <span class="label">Worth knowing</span>
+  <p><code>done_reason</code> has other values. <code>"stop"</code> is the normal one: the model decided it was finished. <code>"unload"</code> appears when the model was unloaded mid-request. Only <code>"length"</code> means <em>"I had more to say"</em>.</p>
+</div>
+
+<h2>How much room does a recipe need?</h2>
+
+<p>From <a href="0002-reading-the-machine.html">Lesson 02</a>: a <code>Recipe</code> reply measured a steady <strong>482 tokens</strong>. The default <code>num_predict</code> is generous enough that you will not normally hit it — which is precisely why this bug lies dormant until the day someone asks for a twelve-ingredient curry, and then it crashes in front of them.</p>
+
+<p>Two defences, and you want both:</p>
+
+<ul>
+  <li><strong>Set <code>num_predict</code> deliberately</strong>, somewhere comfortably above your measured typical reply. Guessing low is a crash; guessing high costs nothing unless the model runs away.</li>
+  <li><strong>Handle the case anyway.</strong> A limit you set from one measurement is a limit someone will exceed.</li>
+</ul>
+
+<h2>A loop that terminates</h2>
+
+<p>Your current loop retries up to three times and then prints whatever it has. That is a reasonable policy for <em>wrong numbers</em> — a slightly-off recipe is still a recipe. It is the wrong policy for <em>truncation</em>, because there is nothing to print. The two failures deserve different handling:</p>
+
+<pre><code>type Outcome =
+  | { kind: "ok"; recipe: Recipe }
+  | { kind: "off-target"; recipe: Recipe; problems: string[] }
+  | { kind: "no-answer"; why: string };
+
+async function ask(history: Message[], cap: number): Promise&lt;Outcome&gt; {
+  for (let attempt = 1; attempt &lt;= 3; attempt++) {
+    const res = await ollama.chat({ /* … */ options: { num_predict: cap } });
+
+    if (res.done_reason === "length") {
+      cap = Math.round(cap * 1.5);        // give it room and try again
+      continue;                            // ← changing the request, not repeating it
+    }
+
+    let recipe: Recipe;
+    try {
+      recipe = Recipe.parse(JSON.parse(res.message.content));
+    } catch {
+      continue;                            // malformed: a retry might genuinely help
+    }
+
+    const { problems } = check(recipe, /* … */);
+    if (problems.length === 0) return { kind: "ok", recipe };
+    if (attempt === 3) return { kind: "off-target", recipe, problems };
+    history.push(revisionMessage(problems));
+  }
+  return { kind: "no-answer", why: "three attempts, no complete reply" };
+}</code></pre>
+
+<p>Three things make this better than a bare counter:</p>
+
+<ol>
+  <li><strong>Each retry changes something.</strong> Retrying an identical request that failed deterministically is just waiting slower. On truncation the cap goes up; on bad numbers the problems go back to the model.</li>
+  <li><strong>Giving up is a result, not an exception.</strong> <code>no-answer</code> is a value the caller can handle — print a message, try a smaller request, fall back. An uncaught <code>SyntaxError</code> is none of those things.</li>
+  <li><strong>Off-target and no-answer are distinct.</strong> One has a recipe you can show with a warning; the other has nothing. Collapsing them loses the only information the user cares about.</li>
+</ol>
+
+<div class="win"><p><strong>This is the fix for exercise 01.</strong> The current code assumes every reply parses. Making the outcome a union type, rather than "a recipe, or an exception from three stack frames down", is the change worth making — and it is a better teaching artifact, because the reader can see every ending the system has.</p></div>
+
+<h2>Do it: fix the bug</h2>
+
+<ol class="steps">
+  <li><p>In <code>chef.ts</code>, add the <code>done_reason === "length"</code> check before the parse, and raise <code>num_predict</code> on that branch instead of giving up.</p></li>
+  <li><p>Wrap the parse so a malformed reply continues the loop instead of killing the process.</p></li>
+  <li><p>Make the failure case visible: when three attempts produce nothing, print a plain sentence saying so, rather than throwing.</p></li>
+  <li><p>Re-run the Part 1 experiment — <code>num_predict: 60</code> — and confirm it now recovers instead of crashing. <strong>Watch the cap climb in the retry log.</strong></p></li>
+  <li><p>Add a test. The honest unit to test is the decision, not the call: a small function that takes <code>done_reason</code> and a cap and returns what to do next is pure, fast, and needs no Ollama — which keeps the repo's testing rule intact.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "Why check done_reason instead of just catching the parse error?",
+    "options": [
+      "Parsing errors are much slower to catch",
+      "The two causes need opposite responses",
+      "JSON.parse cannot detect a missing brace",
+      "The grammar already rejected that reply"
+    ],
+    "answer": 1,
+    "why": "Truncation needs a bigger cap or a smaller request; a genuinely malformed reply might just need a retry. The SyntaxError looks identical in both cases, so catching it alone leaves you guessing."
+  },
+  {
+    "q": "A reply ends with a complete sentence and a closing quote. Is it safe to parse?",
+    "options": [
+      "Yes, the final quote closes the string",
+      "Only if the schema is relatively flat",
+      "Not necessarily — check how it ended",
+      "Yes, once the grammar has accepted it"
+    ],
+    "answer": 2,
+    "why": "Measured: a 600-token reply ended on a tidy-looking sentence and still failed, because the surrounding arrays and braces were never closed. Looking finished and being finished are different things."
+  },
+  {
+    "q": "What is wrong with retrying a truncated request unchanged?",
+    "options": [
+      "It will fail the same way every time",
+      "The model will answer more slowly now",
+      "Ollama rejects identical repeated calls",
+      "The conversation history grows too fast"
+    ],
+    "answer": 0,
+    "why": "The cap is deterministic. Unless the retry changes something — more room, a smaller request — you are just paying for the same failure repeatedly. Every retry should change an input."
+  },
+  {
+    "q": "Why return a \"no-answer\" value rather than throwing an exception?",
+    "options": [
+      "Exceptions are expensive at this scale",
+      "It keeps the retry counter much simpler",
+      "Throwing would lose the done_reason value",
+      "Giving up is an outcome the caller handles"
+    ],
+    "answer": 3,
+    "why": "Running out of attempts is a normal, expected ending — not an emergency. As a value it sits alongside \"ok\" and \"off-target\" in one union the caller must handle; as an exception it escapes to wherever someone remembered to catch it."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> the response-object section of the <a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference</a> — it is where <code>done</code>, <code>done_reason</code> and the generation options are defined. Skim the example responses and notice how much of the reply is metadata you are currently ignoring.</p>
+
+<p>Then the <a href="../reference/resilient-calls.html">resilient calls reference sheet</a>, which compresses this lesson into a decision table you can apply to any model call, not just this one.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> Open questions here: <em>"should the cap grow by 1.5× or just jump straight to a safe maximum?"</em>, <em>"how do I test a retry loop without a live model?"</em>, <em>"should chef.ts reset history per wish?"</em> — that last one has been waiting since Lesson 02 and this is a good moment to settle it.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference — response fields including <code>done_reason</code></a>. Official.</li>
+  <li>Truncation measurements in this lesson: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, caps of 40 / 120 / 600 tokens against the exercise's own <code>Recipe</code> schema.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0002-reading-the-machine.html">← Lesson 02</a>
+  <a href="0004-fitting-a-model-in-memory.html">Lesson 04 →</a>
+  <a href="../reference/resilient-calls.html">Reference: Resilient calls</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -17,10 +17,17 @@ The repo tracks its own learning trail, not just the finished exercises.
 | [reference/](reference/) | Cheat sheets worth reopening: the compressed version of each lesson |
 | [MISSION.md](MISSION.md), [RESOURCES.md](RESOURCES.md) | Why this is being learned, and the sources it is grounded in |
 
-[**The course map**](lessons/index.html) lays out all nine planned lessons in two tracks. Written so far:
+[**Open the course**](index.html) — nine lessons and five reference sheets, every figure measured rather than quoted. In order:
 
-1. [The grammar, not the prompt](lessons/0001-the-grammar-not-the-prompt.html) — why `format` guarantees the shape of a local model's answer and nothing else
-2. [Reading the machine](lessons/0002-reading-the-machine.html) — the timing receipt on every reply, the two speeds a model has, and what a long chat really costs
+1. [The grammar, not the prompt](lessons/0001-the-grammar-not-the-prompt.html) — a schema guarantees shape and nothing else
+2. [Reading the machine](lessons/0002-reading-the-machine.html) — the two speeds a local model has, and what a long chat costs
+3. [When the model can't comply](lessons/0003-when-the-model-cant-comply.html) — truncation, `done_reason`, and loops that give up well
+4. [Fitting a model in your memory](lessons/0004-fitting-a-model-in-memory.html) — the arithmetic of what will actually run
+5. [Schemas a small model can fill](lessons/0005-schemas-a-small-model-can-fill.html) — schema shape as a latency decision
+6. [Does a bigger context make it dumber?](lessons/0006-does-a-bigger-context-make-it-dumber.html) — an experiment, with an honest null result
+7. [What to verify, what to re-ask](lessons/0007-what-to-verify-what-to-reask.html) — the three buckets every error falls into
+8. [Staying fast in something real](lessons/0008-staying-fast-in-something-real.html) — streaming, warm-up, cancellation, concurrency
+9. [Designing an exercise from a finding](lessons/0009-designing-an-exercise.html) — turning a surprise into exercise 02
 
 ## Setup
 

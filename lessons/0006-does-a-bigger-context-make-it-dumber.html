@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 06 · Does a bigger context make it dumber?</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 06 · Running the model well</p>
+  <h1>Does a bigger context make it dumber?</h1>
+  <p class="standfirst">This is the one lesson with an honest "I don't know" in it. There is a well-documented effect where models lose track of things buried in the middle of a long prompt. Whether your model does it, at your context sizes, is a question only measurement answers — and the measuring is the lesson.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~12 minutes, plus however long you let it run · 26 Oct 2026</p>
+</header>
+
+<p><a href="0004-fitting-a-model-in-memory.html">Lesson 04</a> showed you can raise your context window by spending memory. This lesson asks the question that should come first: <em>is a bigger window actually better?</em></p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>More context is not uniformly more understanding. Position matters.</p>
+</div>
+
+<h2>The U-shape</h2>
+
+<p>In 2023 a Stanford-led team ran a careful experiment: give a model a long prompt containing one relevant fact, ask about that fact, and vary <em>where in the prompt the fact sits</em>. Nothing else changed — same prompt length, same question, same fact.</p>
+
+<p>The result has held up well enough to become common knowledge: performance was <strong>highest when the fact was near the beginning or the end, and measurably worse when it sat in the middle</strong>. Plotted against position, accuracy makes a U.<span class="cite"> (Liu et al., 2023)</span></p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>A model does not attend to its context evenly. Material at the <strong>start</strong> and the <strong>end</strong> of a long prompt is used more reliably than material in the <strong>middle</strong>. "It's in the context window" is not the same as "it will be used".</p>
+</div>
+
+<h2>Why this should change what you build</h2>
+
+<p>If the beginning and end are the privileged positions, then <em>where you put things in a prompt is a design decision</em>:</p>
+
+<ul>
+  <li><strong>Your instruction belongs at the end</strong>, after the material it operates on — or at both ends. Burying "answer only in JSON" above 8,000 tokens of context puts it in the weakest position available.</li>
+  <li><strong>A long conversation buries its own middle.</strong> In a chat, the oldest turns sit at the start (privileged) and the newest at the end (privileged), while everything from the middle of the session gets the worst position. That is a strange shape for a memory to have, and it is worth knowing it is the shape you have.</li>
+  <li><strong>More retrieved documents is not strictly better.</strong> Adding a tenth document pushes the other nine toward the middle.</li>
+</ul>
+
+<h2>The honest caveat, up front</h2>
+
+<div class="warn"><p>The U-shape was established on the models of 2023, mostly much larger and cloud-hosted. Whether <code>qwen3.5:9b</code> shows it in 2026, at the context sizes you actually use, is <strong>not something I can tell you from the literature</strong>. Architectures changed; long-context training got much better. The finding is a hypothesis to test on your own setup, not a fact to apply.</p></div>
+
+<h2>Do it: look for the effect</h2>
+
+<p>There is a tool in the repo for this. It hides one fact — a "secret ingredient" — in a wall of filler text, puts it at the start, middle or end, and asks the model to retrieve it.</p>
+
+<ol class="steps">
+  <li>
+    <p>Run it at a modest size first:</p>
+    <pre><code>node assets/needle.ts --tokens 8000</code></pre>
+  </li>
+  <li>
+    <p>On this machine, that produced <strong>FOUND at all three positions</strong> — no U-shape visible at 8,000 tokens. Prefill took about 23 seconds per call. <strong>If you get the same, that is a real result</strong>, not a failed experiment: it tells you the effect is not biting at the size you work at.</p>
+  </li>
+  <li>
+    <p>Push until something changes:</p>
+    <pre><code>node assets/needle.ts --tokens 20000</code></pre>
+    <p>Expect this to be slow — around a minute of prefill per call, so three minutes for the set. Go and make tea.</p>
+  </li>
+  <li>
+    <p>Record what you find, including nulls. "No effect at 8k or 20k on qwen3.5:9b" is a genuinely useful sentence, and almost nobody writes it down.</p>
+  </li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Context is not attended to evenly</strong> — the documented weak spot is the middle.</li>
+    <li><strong>Put instructions last</strong>, after the material they apply to.</li>
+    <li><strong>Test it, don't assume it.</strong> At 8k tokens this model showed no effect at all.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Designing the experiment properly</h2>
+  <p>Including a flaw in the experiment this course already ran on you.</p>
+</div>
+
+<h2>A confession about Lesson 02</h2>
+
+<p><a href="0002-reading-the-machine.html">Lesson 02</a> ran a context experiment: plant a codeword in the system prompt, send up to 48,050 tokens, see whether the model still recalls it. It did, every time, and the lesson concluded that the reported 4096 window was not a hard ceiling.</p>
+
+<p>That conclusion stands — the prompts really were evaluated in full. But the <em>recall</em> half of that experiment was weak, and the U-shape is why: <strong>the codeword was in the system prompt, at the very start of the context — the single easiest position there is.</strong> Finding it there tells you almost nothing about whether the model could have found it in the middle.</p>
+
+<div class="win"><p>This is worth more than the original finding. An experiment that only tests the best case will almost always succeed, and feel like evidence. The fix is cheap — vary the position — and it is the difference between "the model remembered" and "the model can remember <em>anywhere</em>".</p></div>
+
+<h2>What a careful version controls for</h2>
+
+<p>The original study varied position while holding length and content constant.<span class="cite"> (Liu et al., 2023)</span> Borrowing that discipline:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Control</th><th>Why it matters</th></tr></thead>
+<tbody>
+<tr><td><strong>Hold length fixed</strong> across positions</td><td>Otherwise you are measuring length and position at once and cannot separate them.</td></tr>
+<tr><td><strong>Use filler the answer cannot be guessed from</strong></td><td>If the model can infer the answer from context, you are testing its prior, not its retrieval.</td></tr>
+<tr><td><strong>Set <code>temperature: 0</code></strong></td><td>You want the model's best attempt, not a sample from its distribution.</td></tr>
+<tr><td><strong>Repeat each cell</strong></td><td>One run per position is an anecdote. Three or five gives you something to believe.</td></tr>
+<tr><td><strong>Score mechanically</strong></td><td>A regex on the expected answer, not your judgement of whether it "sort of got it".</td></tr>
+</tbody>
+</table>
+</div>
+
+<p><code>assets/needle.ts</code> does the first three and the last one. It does <em>not</em> repeat each cell — so a single run is suggestive, not conclusive. Extending it to repeat and report a hit rate is a small change and a good one.</p>
+
+<h2>Retrieval is the easy task</h2>
+
+<p>A needle test asks the model to <em>find</em> one fact. That is the gentlest possible long-context task. Harder, and closer to real use:</p>
+
+<ul>
+  <li><strong>Two needles.</strong> Plant two facts at different depths and ask a question needing both. Failure rates climb fast.</li>
+  <li><strong>Reasoning over the needle.</strong> Not "what is the secret ingredient" but "is the secret ingredient gluten-free?" — retrieval plus a judgement.</li>
+  <li><strong>Negative controls.</strong> Ask about a fact that is <em>not</em> there. A model that confidently answers anyway is failing in a way a needle test never shows.</li>
+</ul>
+
+<p>That last one is the most revealing and the most often skipped.</p>
+
+<h2>The cost side of the trade</h2>
+
+<p>Even if quality holds perfectly, context is not free — <a href="0002-reading-the-machine.html">Lesson 02</a> and <a href="0004-fitting-a-model-in-memory.html">Lesson 04</a> measured both halves of the bill on this machine:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Prompt size</th><th>Prefill time</th><th>Memory</th></tr></thead>
+<tbody>
+<tr><td>~50 tokens</td><td>&lt; 0.1 s</td><td>7.7 GB</td></tr>
+<tr><td>8,000 tokens</td><td>~24 s</td><td>—</td></tr>
+<tr><td>20,450 tokens</td><td>64 s</td><td>—</td></tr>
+<tr><td>48,050 tokens</td><td>120 s</td><td>11 GB</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Two minutes before the first token. Whatever the quality answer turns out to be, <strong>the latency answer is already decisive for an interactive tool</strong> — which is a perfectly good reason to keep conversations short regardless.</p>
+
+<h2>Do it: run a real experiment</h2>
+
+<ol class="steps">
+  <li><p>Extend <code>assets/needle.ts</code> to repeat each position three times and report a hit rate rather than a single FOUND/LOST.</p></li>
+  <li><p>Add a negative control: a run where the needle is absent, scoring a confident wrong answer as a failure.</p></li>
+  <li><p>Run the grid at 8k and 20k. Two sizes, three positions, three repeats, plus controls. Budget half an hour of wall clock, most of it waiting.</p></li>
+  <li><p>Write up what you found in three sentences — including, if that is what happened, that you found nothing. <strong>A null result you can defend is a better artifact than a positive one you cannot.</strong></p></li>
+  <li><p>If there <em>is</em> an effect at some size, you have found exercise 02. See <a href="0009-designing-an-exercise.html">Lesson 09</a> for turning it into one.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "Where in a long prompt is a fact least likely to be used well?",
+    "options": [
+      "Right at the very beginning of it",
+      "Somewhere around the middle of it",
+      "Immediately before the final question",
+      "Anywhere inside the system prompt"
+    ],
+    "answer": 1,
+    "why": "The documented curve is U-shaped: start and end are used reliably, the middle least. It follows that instructions belong at the end, after the material they apply to."
+  },
+  {
+    "q": "What was weak about Lesson 02's codeword experiment?",
+    "options": [
+      "The prompts were not really long enough",
+      "The filler text gave away the answer",
+      "It only tested the easiest position",
+      "The temperature was left far too high"
+    ],
+    "answer": 2,
+    "why": "The codeword sat in the system prompt — the very start, the strongest position. Succeeding there says little about the middle. Testing only the best case produces evidence that feels stronger than it is."
+  },
+  {
+    "q": "Your needle test finds the fact at every position. What have you learned?",
+    "options": [
+      "Nothing useful — rerun it much larger",
+      "The experiment was set up incorrectly",
+      "The model has no real context limit",
+      "No effect is biting at that size here"
+    ],
+    "answer": 3,
+    "why": "A null result is a result. \"No positional effect at 8k on this model\" is a defensible, useful sentence — and far more honest than rerunning until something looks interesting."
+  },
+  {
+    "q": "Which addition most improves a needle experiment?",
+    "options": [
+      "A control run with no needle present",
+      "A larger and more varied filler text",
+      "A second model to compare against",
+      "A longer answer from the model itself"
+    ],
+    "answer": 0,
+    "why": "Without a negative control you cannot tell retrieval from confident invention. A model that answers just as readily when the fact is absent is failing in a way the positive cases never reveal."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> <a href="https://arxiv.org/abs/2307.03172">"Lost in the Middle: How Language Models Use Long Contexts" (Liu et al., 2023)</a>. The paper that established the U-shape. Read the methodology section rather than the abstract — how they controlled position independently of length is the transferable part, and it is what makes your own version trustworthy.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> This lesson has the most genuinely open questions in the course: <em>"how many repeats before I believe a difference?"</em>, <em>"is two needles a fair test or just a harder one?"</em>, <em>"could the filler itself be confusing the model?"</em> If your results disagree with mine, I want to know — that is a finding, not a mistake.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://arxiv.org/abs/2307.03172">Liu et al. (2023), Lost in the Middle: How Language Models Use Long Contexts</a>. The U-shaped position curve and the experimental design.</li>
+  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/needle.ts"><code>assets/needle.ts</code></a> — needle found at 0%, 50% and 100% depth in an 8,047-token prompt; prefill ~23.6 s per call.</li>
+  <li>Prefill and memory figures carried over from <a href="0002-reading-the-machine.html">Lesson 02</a>.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0005-schemas-a-small-model-can-fill.html">← Lesson 05</a>
+  <a href="0007-what-to-verify-what-to-reask.html">Lesson 07 →</a>
+  <a href="../reference/performance.html">Reference: Performance</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

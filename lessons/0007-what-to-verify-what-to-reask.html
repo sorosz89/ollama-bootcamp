@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 07 · What to verify, what to re-ask</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 07 · Making the output trustworthy</p>
+  <h1>What to verify, what to re-ask</h1>
+  <p class="standfirst">Every lesson so far has pointed at the same seam: the model produces, code checks. This one is about drawing that line deliberately — which errors code should fix silently, which are worth sending back, and which mean you should stop.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~10 minutes · 26 Oct 2026</p>
+</header>
+
+<p><code>check()</code> in your exercise is a good instance of a general pattern. This lesson extracts the pattern so you can apply it to the next exercise without re-deriving it.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>Sort every possible error into three buckets. The bucket decides the code you write.</p>
+</div>
+
+<h2>Three buckets</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Bucket</th><th>Example</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td><strong>Code can fix it</strong></td><td>Ingredient name is <code>"  Chicken Breast "</code> with stray spacing and capitals.</td><td>Fix it silently. Never spend a model round-trip on something a <code>trim()</code> solves.</td></tr>
+<tr><td><strong>Only the model can fix it</strong></td><td>The recipe contains couscous, and the dish needs rethinking without it.</td><td>Send it back, with the specific problem stated.</td></tr>
+<tr><td><strong>Nobody can fix it</strong></td><td>600 kcal at 90 g of protein from a cucumber salad.</td><td>Stop. Report honestly. Retrying cannot help.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>A retry is only worth making if <strong>something about the request has changed</strong> and <strong>the model is capable of doing better</strong>. If either is false, you are burning seconds to arrive at the same answer.</p>
+</div>
+
+<h2>The bucket most people get wrong</h2>
+
+<p>It is the first one. There is a strong pull toward sending everything back to the model, because the feedback loop feels like the clever part of the system. But every round-trip costs a prefill plus a full generation — measured in <a href="0002-reading-the-machine.html">Lesson 02</a> at several seconds for a recipe — and a round-trip that fixes capitalisation is pure waste.</p>
+
+<p>The test is simple: <strong>could you write the fix as a deterministic function?</strong> If yes, write it. Normalising, rounding, sorting, deduplicating, unit conversion, formatting — all code. The model's judgement is expensive; spend it only on judgement.</p>
+
+<h2>Writing a problem the model can act on</h2>
+
+<p>When something does go back, the quality of the message decides whether the retry works. Your exercise does this well, and it is worth seeing why:</p>
+
+<pre><code>// Weak — true, but not actionable
+"The macros are wrong."
+
+// Strong — what, by how much, and in which direction
+"protein per serving is 38 g, target 45 g."</code></pre>
+
+<p>Three properties make the difference: it names <strong>which field</strong>, it gives <strong>the actual and the wanted value</strong>, and it is <strong>per serving</strong> — the same unit the model was asked to work in. A model cannot act on a complaint it has to interpret.</p>
+
+<h2>Do it: audit your own check</h2>
+
+<ol class="steps">
+  <li><p>Open <code>check()</code> in <code>01-gluten-free-chef/chef.ts</code>. For each problem string it can produce, decide which of the three buckets it belongs in.</p></li>
+  <li><p>Find a case in bucket one — something code could just fix. (Hint: look at how ingredient names are matched against the gluten list, and what happens with stray whitespace or capitalisation.)</p></li>
+  <li><p>Find the bucket-three case. What does the exercise currently do when it is unsatisfiable after three attempts? Is that the right behaviour?</p></li>
+  <li><p>Write one sentence describing where you would draw the line, then compare it with Part 2.</p></li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Three buckets:</strong> code fixes it, model fixes it, nobody fixes it.</li>
+    <li><strong>If a deterministic function could fix it, write the function.</strong> Don't spend a round-trip.</li>
+    <li><strong>Feedback must name the field, the actual value and the target.</strong> Vague complaints do not converge.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Loops that converge, and knowing when they won't</h2>
+  <p>Why a retry loop can oscillate forever, and how to notice before your user does.</p>
+</div>
+
+<h2>Fixing one thing breaks another</h2>
+
+<p>Run the cucumber-salad experiment from <a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> and watch the retry log closely. A pattern shows up: the model raises the protein, which pushes the calories over; you complain about calories, it cuts the oil, which drops the fat below target. The constraints are coupled, and fixing them one at a time can cycle.</p>
+
+<p>Three defences, in increasing order of effort:</p>
+
+<ul>
+  <li><strong>Send all problems at once</strong>, not the first one. Your exercise already does this — <code>problems.join(" ")</code> — and it matters more than it looks, because it lets the model trade off between constraints instead of chasing them serially.</li>
+  <li><strong>Say which constraint dominates.</strong> "Calories matter most; get within 10% of the macros if you can" gives the model a way to resolve the conflict, instead of guessing which one you care about.</li>
+  <li><strong>Detect the oscillation.</strong> If attempt 3's problems are the same set as attempt 1's, the loop is not converging and a fourth attempt will not help either.</li>
+</ul>
+
+<h2>Measuring convergence rather than hoping</h2>
+
+<p>A retry loop deserves one number: <strong>is the total error going down?</strong></p>
+
+<pre><code>const distance = (tot: Macros, goal: Macros) =>
+  Object.keys(goal).reduce((d, k) =>
+    d + Math.abs(tot[k] - goal[k]) / goal[k], 0);
+
+// after each attempt
+if (attempt > 1 &amp;&amp; distance(tot, goal) >= previousDistance * 0.95) {
+  // Not meaningfully closer. Another round is unlikely to help.
+  return { kind: "off-target", recipe, problems };
+}</code></pre>
+
+<p>This turns "three attempts" from a superstition into a policy: <em>keep going while you are making progress, stop when you are not.</em> It usually runs fewer attempts than a fixed count, and gives up for a reason you can print.</p>
+
+<div class="detour">
+  <span class="label">Why 0.95 and not 1.0</span>
+  <p>Because a model will often produce a trivially different answer that is a fraction of a percent closer, forever. Requiring <em>meaningful</em> improvement — say 5% — stops the loop treating noise as progress. The exact threshold is arbitrary; having one is not.</p>
+</div>
+
+<h2>The honest failure</h2>
+
+<p>Some requests are impossible, and the system's job is to say so clearly. Your exercise currently prints the recipe with <code>(still off target)</code> appended, which is a defensible choice: a near-miss recipe is still useful, and the caveat is visible.</p>
+
+<p>What makes it defensible is that the caveat is <em>specific and honest</em>. Compare the options:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>On final failure</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Print the recipe silently</td><td><strong>Wrong.</strong> The user believes numbers that are known to be false.</td></tr>
+<tr><td>Print it with <code>(still off target)</code></td><td><strong>Acceptable.</strong> Honest, though it does not say by how much.</td></tr>
+<tr><td>Print it with the actual gap: <em>"protein 38 g, wanted 45 g"</em></td><td><strong>Better.</strong> The user can judge whether it matters to them.</td></tr>
+<tr><td>Refuse and explain why it is impossible</td><td><strong>Best when it really is impossible</strong> — but you have to be sure, and usually you are not.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The general rule, and the one that matches this repo's attitude in its Caveats sections: <strong>never let a verified-wrong value out without the verification result attached to it.</strong></p>
+
+<h2>Generalising the pattern</h2>
+
+<p>For any new exercise, the same four questions produce the design:</p>
+
+<ol>
+  <li><strong>What can code decide with certainty?</strong> Arithmetic, membership in a list, format, ordering. That is your <code>check()</code>.</li>
+  <li><strong>What needs judgement?</strong> That is what the model is for, and the only thing worth a round-trip.</li>
+  <li><strong>What does a useful complaint look like?</strong> Field, actual, target, in the model's own units.</li>
+  <li><strong>What happens when it does not work?</strong> Decide this before writing the loop, not after it bites.</li>
+</ol>
+
+<p>Answer those four and the structure writes itself — which is the real reason the exercises in this repo all look alike.</p>
+
+<h2>Do it: upgrade the loop</h2>
+
+<ol class="steps">
+  <li><p>Add the <code>distance()</code> function to <code>chef.ts</code> and log it after each attempt. Run the cucumber-salad case and watch whether it falls.</p></li>
+  <li><p>Replace the fixed three attempts with "stop when not improving", keeping three as a hard upper bound.</p></li>
+  <li><p>Upgrade the final message from <code>(still off target)</code> to name the remaining gaps.</p></li>
+  <li><p>Move one bucket-one problem out of <code>check()</code> and into a normalisation step before checking. Confirm the tests still pass — and add one for the normaliser, since it is pure and needs no model.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "An ingredient comes back as \"  Olive Oil \". What should happen?",
+    "options": [
+      "Send it back for the model to fix",
+      "Normalise it in code, no round-trip",
+      "Reject the reply and retry it once",
+      "Add a prompt rule about whitespace"
+    ],
+    "answer": 1,
+    "why": "A deterministic function fixes it perfectly and instantly. Spending several seconds of model time on whitespace is the most common waste in this pattern."
+  },
+  {
+    "q": "Why send all problems in one message instead of the first one?",
+    "options": [
+      "It uses noticeably fewer tokens overall",
+      "The model answers single problems poorly",
+      "It lets the model trade constraints off",
+      "The retry counter stays simpler that way"
+    ],
+    "answer": 2,
+    "why": "Constraints are coupled — raising protein pushes calories up. Given all of them at once the model can find a joint solution; given them one at a time it can cycle indefinitely."
+  },
+  {
+    "q": "How do you tell a retry loop is not converging?",
+    "options": [
+      "Total error stops meaningfully shrinking",
+      "The model produces identical JSON twice",
+      "The attempt counter has reached its limit",
+      "Each reply takes longer than the last one"
+    ],
+    "answer": 0,
+    "why": "Measure the distance from target after each attempt. While it falls, keep going; when it stalls, stop. That is a policy with a reason behind it, unlike a fixed count."
+  },
+  {
+    "q": "The loop gives up with a recipe still off target. What should it print?",
+    "options": [
+      "The recipe, with the gaps named",
+      "An error, since the result failed",
+      "The recipe exactly as it arrived",
+      "The closest attempt of the three"
+    ],
+    "answer": 0,
+    "why": "A near-miss is still useful, but only with the verification attached. Never release a value you know to be wrong without the result of the check that found it wrong."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p>There is no external primary source for this one — it is a design pattern, not a documented API. The closest thing to a canonical statement is the repo's own <code>CLAUDE.md</code>, under <em>"The pattern exercises follow"</em>, which is the compressed version of this lesson and is worth reading as a specification you are now able to critique.</p>
+
+<p>For the mechanics underneath, revisit <a href="../reference/resilient-calls.html">the resilient calls reference</a> — this lesson decides <em>what</em> to retry, that one covers <em>how</em>.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> This lesson is opinionated and the opinions are arguable: <em>"is giving up really better than a fourth attempt?"</em>, <em>"should the model ever be told a request is impossible?"</em>, <em>"where does this pattern break down?"</em> Push back — if you can break the pattern, that is worth more than agreeing with it.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li>Timing figures carried from <a href="0002-reading-the-machine.html">Lesson 02</a>: measured on this machine, 26 Oct 2026.</li>
+  <li>The pattern itself is this repo's, stated in <code>CLAUDE.md</code> and implemented in <code>01-gluten-free-chef/chef.ts</code>.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0006-does-a-bigger-context-make-it-dumber.html">← Lesson 06</a>
+  <a href="0008-staying-fast-in-something-real.html">Lesson 08 →</a>
+  <a href="../reference/resilient-calls.html">Reference: Resilient calls</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

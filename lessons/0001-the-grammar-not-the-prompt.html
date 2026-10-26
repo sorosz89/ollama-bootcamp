@@ -12,15 +12,60 @@
 <header class="masthead">
   <p class="kicker">Ollama Bootcamp · Lesson 01 · Structured output</p>
   <h1>The grammar, not the prompt</h1>
-  <p class="standfirst">Your <code>chef.ts</code> already passes a JSON schema to Ollama. It is not asking the model nicely — it is making every other answer physically unsamplable. Knowing exactly where that guarantee stops is the whole lesson.</p>
-  <p class="meta">~12 minutes · Ollama running, <code>qwen3.5:9b</code> · 26 Oct 2026</p>
+  <p class="standfirst">Your <code>chef.ts</code> already passes a JSON schema to Ollama. It is not asking the model nicely — it is making every other answer impossible to produce. Part 1 is that idea; Part 2 is exactly where the guarantee stops.</p>
+  <p class="meta">Part 1 ~5 minutes · Part 2 ~9 minutes · Ollama running, <code>qwen3.5:9b</code> · 26 Oct 2026</p>
 </header>
 
 <p>You already know cloud structured output: you hand OpenAI or Anthropic a schema, and a valid object comes back. The mental model most people carry over is <em>the provider validates the reply and retries until it fits</em>. That model is wrong for Ollama, and the difference is the reason <code>check()</code> exists in your repo.</p>
 
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>One mechanism, three consequences, one experiment. Stop here if you like.</p>
+</div>
+
+<h2>Asking versus preventing</h2>
+
+<p>There are two ways to get a particular shape of answer out of a model.</p>
+
+<p>You can <strong>ask</strong>: put "reply in JSON with these fields" in the prompt and hope. The model usually complies, sometimes adds a cheerful preamble, occasionally wraps it in a markdown code fence, and now and then forgets a field. You validate afterwards and retry when it is wrong.</p>
+
+<p>Or you can <strong>prevent</strong>: make any other shape impossible to produce in the first place. This is what passing a schema to <code>format</code> does, and it is a completely different kind of thing — not a stronger request, but a mechanical constraint.</p>
+
 <div class="keystone">
   <span class="label">The keystone</span>
   <p><code>format</code> does not ask the model for JSON. It deletes every token that would break your schema before the model is allowed to pick one.</p>
+</div>
+
+<h2>The three words you need</h2>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>schema</td><td>A description of the shape you want: which fields, of which types. Here it is a Zod object.</td></tr>
+<tr><td>grammar</td><td>What your schema is turned into — a set of rules about which characters may legally come next.</td></tr>
+<tr><td>constrained decoding</td><td>The mechanism: at every step, anything that would break the grammar is removed from the model's options before it chooses.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Put together: your schema becomes a grammar, and the grammar removes the wrong answers from the menu rather than correcting them afterwards.</p>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>The shape is guaranteed, not requested.</strong> There is no retry loop for shape, because nothing else can be produced.</li>
+    <li><strong>The contents are not guaranteed at all.</strong> Valid JSON full of invented numbers is the normal case.</li>
+    <li><strong>Still ask for JSON in the prompt.</strong> Constraining a model that was not heading that way degrades what it writes.</li>
+  </ol>
+</div>
+
+<p>That is the idea. <a href="#part2">Part 2</a> is the mechanism underneath and the three gaps it leaves — worth reading before you write a second exercise, but not before you use the first.</p>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>The mechanism and its gaps</h2>
+  <p>How the constraint actually works, and the three things it still cannot promise you.</p>
 </div>
 
 <h2>The mechanism, in one pass</h2>
@@ -182,8 +227,9 @@
 </ul>
 
 <nav class="footer-nav">
-  <a href="index.html">All lessons</a>
-  <a href="../reference/structured-output.html">Reference: Structured output cheat sheet →</a>
+  <a href="../index.html">All lessons</a>
+  <a href="0002-reading-the-machine.html">Lesson 02 →</a>
+  <a href="../reference/structured-output.html">Reference: Structured output</a>
   <a href="../MISSION.md">Mission</a>
   <a href="../RESOURCES.md">Resources</a>
 </nav>

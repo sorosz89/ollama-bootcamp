@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 08 · Staying fast in something real</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 08 · Running the model well</p>
+  <h1>Staying fast in something real</h1>
+  <p class="standfirst">A model that is fast enough at the command line can feel broken in an application. The difference is mostly about when the user sees the first character, and what happens when two people ask at once.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~11 minutes · 26 Oct 2026</p>
+</header>
+
+<p>Everything so far has measured one call at a time, by hand. This lesson is what changes when the model sits behind something other than you.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>Perceived speed and actual speed are different problems. One of them you can fix today.</p>
+</div>
+
+<h2>Waiting is worse than slow</h2>
+
+<p>Your exercise waits for the complete reply and then prints it. For a 482-token recipe at ~50 tokens a second, that is roughly <strong>ten seconds of nothing</strong>, then everything at once.</p>
+
+<p>Stream the same call and the first words appear in well under a second. The total time is identical — the model is doing exactly the same work at exactly the same rate — but the experience is transformed, because the wait is filled rather than empty.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>Streaming does not make generation faster. It makes the <strong>time to first token</strong> the number the user feels, instead of the time to last token. That is usually a tenfold improvement in perceived speed for free.</p>
+</div>
+
+<h2>The two waits you can actually remove</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Wait</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>~3.4 s before anything, occasionally</td><td>Cold start — the model was unloaded after 5 minutes idle.</td><td>Keep it resident: <code>keep_alive: "30m"</code>, or warm it at startup.</td></tr>
+<tr><td>~10 s before anything, every time</td><td>You are waiting for the whole reply before showing any of it.</td><td>Stream.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Both measured on this machine in <a href="0002-reading-the-machine.html">Lesson 02</a>. Neither requires a better model or a faster laptop.</p>
+
+<h2>Streaming, in the client you already use</h2>
+
+<pre><code>const stream = await ollama.chat({
+  model: MODEL,
+  messages: history,
+  stream: true,
+});
+
+let full = "";
+for await (const part of stream) {
+  process.stdout.write(part.message.content);   // appears as it arrives
+  full += part.message.content;
+}
+// `full` is the complete reply; the final part carries the timing fields.</code></pre>
+
+<p>One flag and a loop. The pieces arrive as the model produces them.</p>
+
+<div class="warn"><p><strong>Streaming and structured output pull against each other.</strong> A partial JSON string is not parseable, so you cannot validate until the stream completes — and you certainly cannot show a half-finished object to a user as if it were a result. For <code>chef.ts</code>, streaming the <em>text</em> of a recipe is lovely; streaming a <em>schema-constrained</em> recipe mostly means watching JSON punctuation appear. This is a real tension, not a detail, and it is the main reason your exercise does not stream today.</p></div>
+
+<h2>Do it: feel the difference</h2>
+
+<ol class="steps">
+  <li>
+    <p>Compare the two experiences directly, without touching your exercise:</p>
+    <pre><code>ollama run qwen3.5:9b "Write a 200-word description of a gluten-free traybake."</code></pre>
+    <p>That streams by default. Note how quickly text starts.</p>
+  </li>
+  <li>
+    <p>Now the same request without streaming:</p>
+    <pre><code>curl -s http://localhost:11434/api/generate -d '{"model":"qwen3.5:9b","prompt":"Write a 200-word description of a gluten-free traybake.","stream":false}' | head -c 200</code></pre>
+    <p>Same work, same total time, completely different feel.</p>
+  </li>
+  <li>
+    <p>Warm the model deliberately and watch the cold start disappear:</p>
+    <pre><code>curl -s http://localhost:11434/api/generate -d '{"model":"qwen3.5:9b","keep_alive":"30m"}' > /dev/null
+ollama ps</code></pre>
+    <p>Check the <code>UNTIL</code> column. An empty prompt with a <code>keep_alive</code> loads the model without generating anything — the standard warm-up trick.</p>
+  </li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Stream whenever a human is waiting.</strong> Same total time, a tenth of the perceived wait.</li>
+    <li><strong>Warm the model at startup</strong> and keep it resident, so no user pays the 3.4-second cold start.</li>
+    <li><strong>Streaming fights structured output.</strong> You cannot parse half an object — decide which you need.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>More than one request at a time</h2>
+  <p>What Ollama does under concurrency, what it costs in memory, and how to cancel work nobody is waiting for.</p>
+</div>
+
+<h2>By default, one at a time</h2>
+
+<p>Ollama queues. For a given model, the number of requests it will process simultaneously is <code>OLLAMA_NUM_PARALLEL</code>, and the <strong>default is 1</strong>.<span class="cite"> (FAQ)</span> Everything else waits its turn, up to <code>OLLAMA_MAX_QUEUE</code> (default 512), after which the server returns a 503.<span class="cite"> (FAQ)</span></p>
+
+<p>This is a reasonable default and an unpleasant surprise. Two users of your tool do not halve each other's speed — the second one waits for the first to finish entirely, then starts.</p>
+
+<p>You can raise it, but the price is stated plainly in the docs:</p>
+
+<div class="warn"><p>"Required RAM will scale by <code>OLLAMA_NUM_PARALLEL</code> × <code>OLLAMA_CONTEXT_LENGTH</code>", and "parallel request processing for a given model results in increasing the context size by the number of parallel requests. For example, a 2K context with 4 parallel requests will result in an 8K context and additional memory allocation."<span class="cite"> (FAQ)</span></p></div>
+
+<p>So on this machine — 7.6 GB of weights in roughly 18 GB of usable memory — four parallel requests at a 4k context means allocating as though you had a 16k context. That is affordable. Four parallel at a 64k context is not. Concurrency is bought with the memory budget from <a href="0004-fitting-a-model-in-memory.html">Lesson 04</a>, and overspending puts you back on the CPU cliff.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Variable</th><th>Default</th><th>Raise it when</th></tr></thead>
+<tbody>
+<tr><td><code>OLLAMA_NUM_PARALLEL</code></td><td>1</td><td>Several users share one model and you have memory spare.</td></tr>
+<tr><td><code>OLLAMA_MAX_LOADED_MODELS</code></td><td>3 per GPU</td><td>You genuinely need different models resident at once.</td></tr>
+<tr><td><code>OLLAMA_MAX_QUEUE</code></td><td>512</td><td>Rarely. Hitting it means you needed a queue of your own.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Cancelling work nobody wants</h2>
+
+<p>A user closes the tab, or types a new question before the last one finished. Without cancellation the model keeps generating into the void, holding the one parallel slot everyone else is queued behind.</p>
+
+<p>The JS client returns an abortable iterator from a streaming call:</p>
+
+<pre><code>const stream = await ollama.chat({ model, messages, stream: true });
+
+// elsewhere — user navigated away, or asked something new
+stream.abort();
+
+// or, to stop every in-flight request on the client
+ollama.abort();</code></pre>
+
+<p>In an interactive tool this is not a nicety. One abandoned 48k-token prefill — measured at two minutes in <a href="0002-reading-the-machine.html">Lesson 02</a> — is two minutes nobody else can use the model.</p>
+
+<h2>Memory knobs for a long-running process</h2>
+
+<p>A model left resident for days behaves differently from one you poke at the command line:</p>
+
+<ul>
+  <li><strong><code>keep_alive: -1</code> pins it forever.</strong> Good for a dedicated machine, antisocial on a laptop you also work on — it will hold several gigabytes until the server restarts.</li>
+  <li><strong>Flash attention</strong> is used automatically where supported, and <code>OLLAMA_FLASH_ATTENTION=1</code> forces it on. It "significantly reduces memory usage as the context size grows".<span class="cite"> (FAQ)</span></li>
+  <li><strong><code>OLLAMA_KV_CACHE_TYPE</code></strong> quantizes the conversation cache, default <code>f16</code>, and needs flash attention to help. It is <em>global</em> — every model on the server is affected.<span class="cite"> (FAQ)</span></li>
+</ul>
+
+<h2>A checklist before you ship anything</h2>
+
+<ol>
+  <li><strong>Warm the model at startup</strong> so the first real user does not pay the cold start.</li>
+  <li><strong>Stream if a human is waiting</strong>, unless you need to validate the whole object first.</li>
+  <li><strong>Cancel on disconnect.</strong> Hold the abort handle somewhere you can reach it.</li>
+  <li><strong>Set <code>num_predict</code> deliberately</strong> — <a href="0003-when-the-model-cant-comply.html">Lesson 03</a> — so a runaway generation cannot hold the slot indefinitely.</li>
+  <li><strong>Decide your concurrency and check it fits</strong> in memory before raising <code>OLLAMA_NUM_PARALLEL</code>.</li>
+  <li><strong>Watch <code>ollama ps</code> under load.</strong> The <code>PROCESSOR</code> column is still the first thing to check when something is slow.</li>
+</ol>
+
+<h2>Do it: make the exercise stream</h2>
+
+<ol class="steps">
+  <li><p>Add a streaming path to <code>chef.ts</code> that prints the raw JSON as it arrives, accumulating it into a string. Parse and validate only once the stream ends.</p></li>
+  <li><p>Decide honestly whether it improved anything. Watching schema-constrained JSON stream is not obviously better than a short wait — <strong>a well-argued "no" is the right answer if that is what you find</strong>, and belongs in the exercise's Caveats.</p></li>
+  <li><p>Warm the model when <code>chef.ts</code> starts, with an empty prompt and a <code>keep_alive</code>. Measure the first recipe before and after.</p></li>
+  <li><p>Wire up <code>Ctrl-C</code> to <code>abort()</code> the in-flight request rather than killing the process mid-generation.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "What does streaming actually improve?",
+    "options": [
+      "The total time the reply takes",
+      "The rate at which tokens are made",
+      "The time until something is visible",
+      "The memory the model needs to run"
+    ],
+    "answer": 2,
+    "why": "Generation runs at exactly the same rate. What changes is that the user sees the first token in well under a second rather than waiting ten for the last one. Perceived speed, not real speed."
+  },
+  {
+    "q": "How many requests does one model handle at once by default?",
+    "options": [
+      "One — the rest of them queue up",
+      "Three, matching the loaded models",
+      "As many as the memory allows for",
+      "Four, which is the documented value"
+    ],
+    "answer": 0,
+    "why": "OLLAMA_NUM_PARALLEL defaults to 1, so a second caller waits for the first to finish completely. Raising it costs RAM scaling by parallel × context length."
+  },
+  {
+    "q": "Why cancel a request when the user navigates away?",
+    "options": [
+      "Ollama charges for abandoned requests",
+      "The reply would otherwise be cached",
+      "It frees the slot others are waiting on",
+      "Unfinished replies corrupt the history"
+    ],
+    "answer": 2,
+    "why": "With one parallel slot by default, an abandoned generation blocks everyone behind it. An abandoned 48k-token prefill measured at two minutes — two minutes the model is unavailable."
+  },
+  {
+    "q": "Why doesn't chef.ts stream today?",
+    "options": [
+      "The JS client cannot stream chat calls",
+      "Streaming is incompatible with retries",
+      "The schema would have to be dropped",
+      "Partial JSON cannot be parsed or shown"
+    ],
+    "answer": 3,
+    "why": "Structured output has to arrive complete before it can be validated, so there is nothing meaningful to show mid-stream except punctuation. Streaming and schemas genuinely pull against each other."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> the concurrency section of the <a href="https://docs.ollama.com/faq">Ollama FAQ</a> — the only authoritative statement of the defaults and of how memory scales with parallelism. Four paragraphs, and they will save you a confusing afternoon.</p>
+
+<p>Then the <a href="../reference/performance.html">performance reference</a> for the knobs in one table.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> Worth raising: <em>"is streaming worth it for structured output at all?"</em>, <em>"how would I benchmark two concurrent requests honestly?"</em>, <em>"what actually happens at OLLAMA_MAX_QUEUE?"</em></p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://docs.ollama.com/faq">Ollama FAQ</a>. Official; <code>OLLAMA_NUM_PARALLEL</code>, <code>OLLAMA_MAX_LOADED_MODELS</code>, <code>OLLAMA_MAX_QUEUE</code>, <code>keep_alive</code>, flash attention, <code>OLLAMA_KV_CACHE_TYPE</code>, and the RAM-scaling statement.</li>
+  <li><a href="https://www.npmjs.com/package/ollama">ollama-js</a> v0.6.4 — <code>stream: true</code> returns an abortable iterator with <code>.abort()</code>; the client also exposes a global <code>abort()</code>.</li>
+  <li>Timing figures carried from <a href="0002-reading-the-machine.html">Lesson 02</a>: measured on this machine, 26 Oct 2026.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0007-what-to-verify-what-to-reask.html">← Lesson 07</a>
+  <a href="0009-designing-an-exercise.html">Lesson 09 →</a>
+  <a href="../reference/performance.html">Reference: Performance</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

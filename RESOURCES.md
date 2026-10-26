@@ -10,6 +10,10 @@
   Walks the schema → GBNF grammar → logit-masking path and names the failure modes the official docs skip. Use for: why constrained output can still be invalid, and why it costs throughput.
 - [llama.cpp GBNF grammar guide](https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md)
   The grammar layer Ollama sits on. Use for: understanding what a grammar can and cannot express, and hand-writing constraints beyond JSON.
+- [llama.cpp: Difference in different quantization methods (#2094)](https://github.com/ggml-org/llama.cpp/discussions/2094)
+  The size and perplexity table the whole ecosystem quotes, from the people who wrote the quantization. Use for: choosing a quant tag, and for what "not recommended" actually means.
+- [Liu et al. (2023), Lost in the Middle](https://arxiv.org/abs/2307.03172)
+  The U-shaped position curve in long contexts. Use for: designing long-context experiments; the methodology section matters more than the result.
 - [Ollama model library](https://ollama.com/library)
   Sizes, tags, quantizations, capabilities per model. Use for: picking a model against a RAM budget; always confirm with `ollama show`.
 - [Ollama docs: Context length](https://docs.ollama.com/context-length)
@@ -28,6 +32,6 @@
 
 ## Gaps
 
-- No trusted source yet on quantization quality trade-offs (q4_K_M vs q8 vs fp16) at a given parameter count. Needed before advising anyone which tag to pull.
+- Quantization trade-offs: **closed** 26 Oct 2026 via llama.cpp discussion #2094, which carries the size-and-perplexity table. Still open: how the newer 4-bit float formats (`nvfp4`, `mxfp4`) compare, since `qwen3.5:9b` uses one and the k-quant figures may not transfer.
 - No authoritative source found on what the `mlx` runner does differently from the llama.cpp runner, which Lesson 02's context measurements made into an open question.
 - Throughput methodology: **closed** 26 Oct 2026. The API reference defines the timing fields and the tok/s formula; `assets/bench.ts` applies it.

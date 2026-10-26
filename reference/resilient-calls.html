@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Resilient calls</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Reference sheet</p>
+  <h1>Resilient calls</h1>
+  <p class="standfirst">Every way a model call can end, how to detect it, and what to do about it.</p>
+  <p class="meta">Checked 26 Oct 2026 · Ollama 0.6.x · ollama-js 0.6.4</p>
+</header>
+
+<h2>How a reply ends</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th><code>done_reason</code></th><th>Means</th><th>Do</th></tr></thead>
+<tbody>
+<tr><td><code>"stop"</code></td><td>The model finished on its own.</td><td>Parse it. Then verify the contents.</td></tr>
+<tr><td><code>"length"</code></td><td>Hit <code>num_predict</code> mid-generation.</td><td><strong>Do not parse.</strong> Raise the cap or shrink the request, then retry.</td></tr>
+<tr><td><code>"unload"</code></td><td>The model was unloaded during the request.</td><td>Retry once; check <code>keep_alive</code> and memory pressure.</td></tr>
+<tr><td><em>throws</em></td><td>Server unreachable, model not pulled, request aborted.</td><td>Not a retry case. Fail with a message naming the cause.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>The order of checks</h2>
+
+<pre><code>const res = await ollama.chat({ /* … */ });
+
+// 1. How did it end?
+if (res.done_reason === "length") { cap = Math.round(cap * 1.5); continue; }
+
+// 2. Is it syntactically parseable?
+let value: T;
+try { value = Schema.parse(JSON.parse(res.message.content)); }
+catch { continue; }                       // malformed: a retry may help
+
+// 3. Is it actually correct?
+const problems = check(value);
+if (problems.length === 0) return { kind: "ok", value };
+
+// 4. Is it worth another round?
+if (!improving(problems) || attempt === max)
+  return { kind: "off-target", value, problems };
+
+history.push(revisionMessage(problems));  // change the request, then loop</code></pre>
+
+<p>Skipping step 1 turns a truncation into a confusing <code>SyntaxError</code>. Skipping step 4 gives you a loop that spins without converging.</p>
+
+<h2>Outcomes, as a type</h2>
+
+<pre><code>type Outcome&lt;T&gt; =
+  | { kind: "ok";         value: T }
+  | { kind: "off-target"; value: T; problems: string[] }
+  | { kind: "no-answer";  why: string };</code></pre>
+
+<p>Three endings the caller must handle. Running out of attempts is an ordinary result, not an exception — an exception escapes to wherever someone remembered to catch it, which is rarely where the decision belongs.</p>
+
+<h2>Rules for retrying</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Rule</th><th>Because</th></tr></thead>
+<tbody>
+<tr><td><strong>Every retry must change an input.</strong></td><td>An identical request that failed deterministically will fail identically. Raise the cap, add the problems, shrink the schema — or do not retry.</td></tr>
+<tr><td><strong>Send all problems at once.</strong></td><td>Constraints are coupled. One at a time lets the loop oscillate — fixing protein breaks calories, fixing calories breaks fat.</td></tr>
+<tr><td><strong>Stop when not improving.</strong></td><td>Measure distance to target each round. Stalled progress means another round will not help; a fixed attempt count is superstition by comparison.</td></tr>
+<tr><td><strong>Never release a wrong value silently.</strong></td><td>If you print a result that failed verification, print what failed and by how much alongside it.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Feedback that works</h2>
+
+<pre><code>// Weak
+"The macros are wrong."
+
+// Strong — field, actual, target, in the model's own units
+"protein per serving is 38 g, target 45 g."</code></pre>
+
+<h2>Caps worth setting</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Setting</th><th>Guidance</th></tr></thead>
+<tbody>
+<tr><td><code>num_predict</code></td><td>Measure your typical reply, then set comfortably above it. A <code>Recipe</code> measured 482 tokens here; a deeply nested schema blew past 1,200.</td></tr>
+<tr><td>Max attempts</td><td>Three is a reasonable ceiling, but prefer stopping on stalled progress — it usually stops sooner, and for a reason you can print.</td></tr>
+<tr><td>Cap growth</td><td>×1.5 per truncation. Jumping straight to a huge cap risks a runaway generation holding the model's only parallel slot.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn"><p><strong>The one-line version.</strong> Check how it ended, then whether it parsed, then whether it is right — and make every retry change something. Collapsing any of those three into the others is where the bugs live.</p></div>
+
+<nav class="footer-nav">
+  <a href="glossary.html">Glossary</a>
+  <a href="../index.html">All lessons</a>
+  <a href="../lessons/0003-when-the-model-cant-comply.html">← Lesson 03</a>
+  <a href="../lessons/0007-what-to-verify-what-to-reask.html">Lesson 07</a>
+  <a href="structured-output.html">Reference: Structured output</a>
+</nav>
+
+</main>
+</body>
+</html>

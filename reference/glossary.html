@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Glossary</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Reference sheet</p>
+  <h1>Glossary</h1>
+  <p class="standfirst">The vocabulary this course uses, in the sense it uses it. Where the field has several words for one thing, the preferred one is given and the rest listed as aliases.</p>
+  <p class="meta">Updated 26 Oct 2026</p>
+</header>
+
+<h2>Running a model</h2>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>token</td><td>A chunk of text, roughly ¾ of a word. The unit models count in. <em>Avoid:</em> word, character.</td></tr>
+<tr><td>prefill</td><td>The phase where the model reads the prompt. Parallel, so fast. <em>Aliases:</em> prompt eval, prompt processing.</td></tr>
+<tr><td>decode</td><td>The phase where the model writes the reply, one token at a time. <em>Aliases:</em> eval, generation.</td></tr>
+<tr><td>context window</td><td>The maximum tokens a model can hold at once. Note the split: <strong>advertised</strong> (what the model supports, from <code>ollama show</code>) vs <strong>allocated</strong> (what Ollama gave it, from <code>ollama ps</code>).</td></tr>
+<tr><td>KV cache</td><td>The model's stored representation of text it has already read, so an unchanged prefix need not be re-read. Lives in RAM; grows with context.</td></tr>
+<tr><td>cold start</td><td>The delay while weights load from disk into memory. Appears as <code>load_duration</code>. Models unload after 5 minutes idle by default.</td></tr>
+<tr><td>spill</td><td>When a model does not fit in memory and part of it runs on the CPU, roughly 10× slower. Visible as a non-<code>100% GPU</code> value under <code>PROCESSOR</code>. <em>Aliases:</em> offload, CPU offloading.</td></tr>
+<tr><td>quantization</td><td>Storing each weight in fewer bits — lossy compression for model weights. ~4 bits is the usual default.</td></tr>
+<tr><td>k-quant</td><td>A quantization method that spends more bits on layers that need them. The <code>K</code> in <code>Q4_K_M</code>.</td></tr>
+<tr><td>runner</td><td>The engine actually executing the model under Ollama — <code>mlx</code> on Apple Silicon here, llama.cpp elsewhere. Behaviour can differ between them.</td></tr>
+<tr><td>keep-alive</td><td>How long a model stays resident after a request. Default 5 minutes; <code>-1</code> pins it, <code>0</code> unloads immediately.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Getting structure out</h2>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>constrained decoding</td><td>Restricting which tokens may be sampled so output must match a grammar. What <code>format</code> does. <em>Avoid:</em> "JSON mode" for this — that is the weaker string option.</td></tr>
+<tr><td>GBNF</td><td>The grammar format llama.cpp uses. Your JSON schema is compiled into one.</td></tr>
+<tr><td>logit masking</td><td>The mechanism: tokens that would break the grammar are forbidden before sampling picks one.</td></tr>
+<tr><td>schema</td><td>The declared shape of a reply. Here, a Zod object converted with <code>z.toJSONSchema()</code> and used both to constrain generation and to parse the result.</td></tr>
+<tr><td>truncation</td><td>Generation stopping before the structure is closed, usually at <code>num_predict</code>. Produces valid-so-far, unparseable JSON. Detect with <code>done_reason === "length"</code>.</td></tr>
+<tr><td>verification</td><td>Code checking whether a syntactically valid reply is actually <em>correct</em>. The grammar cannot do this; it is the half left to you.</td></tr>
+<tr><td>the seam</td><td>This course's term for the division of labour: the model supplies judgement, code supplies determinism. Every exercise is built on it.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Measuring</h2>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>time to first token</td><td>What a user actually feels. Load time plus prefill. Streaming makes this the number that matters instead of total time.</td></tr>
+<tr><td>decode rate</td><td><code>eval_count / eval_duration × 10⁹</code>. The figure people mean by "tokens per second". ~50/s here.</td></tr>
+<tr><td>prefill rate</td><td>The same arithmetic on the <code>prompt_eval_*</code> pair. ~120/s fresh, ~881/s when the prefix is cached.</td></tr>
+<tr><td>needle test</td><td>Hiding one fact in a long prompt and asking for it back, varying the depth, to test long-context retrieval.</td></tr>
+<tr><td>null result</td><td>An experiment that found no effect. A finding worth writing down, not a failed run.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note"><p><strong>Ambiguities resolved for this course.</strong> "Context" always means the allocated window unless stated otherwise. "Tokens per second" is never used without saying prefill or decode. "JSON mode" means <code>format: "json"</code>; passing a schema is called constrained decoding.</p></div>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="structured-output.html">Structured output</a>
+  <a href="performance.html">Performance</a>
+  <a href="model-selection.html">Choosing a model</a>
+  <a href="resilient-calls.html">Resilient calls</a>
+</nav>
+
+</main>
+</body>
+</html>

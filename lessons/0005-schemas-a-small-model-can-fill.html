@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 05 · Schemas a small model can fill</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 05 · Making the output trustworthy</p>
+  <h1>Schemas a small model can fill</h1>
+  <p class="standfirst">The grammar will force a model into any shape you define. That does not mean every shape is a good idea. Schema design turns out to be a latency decision and a reliability decision, not just a modelling one.</p>
+  <p class="meta">Part 1 ~6 minutes · Part 2 ~10 minutes · measured on this machine, 26 Oct 2026</p>
+</header>
+
+<p><a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> established that the schema is enforced mechanically. The obvious next move is to put <em>everything</em> in the schema — deep structure, rich objects, every field you might want. This lesson is about why that backfires, with numbers.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>Every field in your schema is tokens the model has to write. Tokens are time, and time has a ceiling.</p>
+</div>
+
+<h2>A schema is a bill</h2>
+
+<p>When you ask for a nested object with twelve fields, the model does not just "fill it in". It has to generate every brace, every key name, every quote mark, one token at a time, at the decode speed from <a href="0002-reading-the-machine.html">Lesson 02</a> — around 50 tokens a second here.</p>
+
+<p>Structure is not free. <code>{"recipe": {"meta": {"title": …</code> spends tokens on punctuation and key names before any actual content appears. A flat object spends them on content.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>The same request, asked for in three different shapes: <strong>290 tokens flat, 332 with enums, and over 1,200 deeply nested</strong> — where the nested version ran out of room and failed entirely. Shape is not cosmetic.</p>
+</div>
+
+<h2>The three shapes, measured</h2>
+
+<p>One prompt — "a gluten-free chicken traybake for two" — asked for three ways on this machine:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Schema</th><th>Tokens generated</th><th>Time</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td><strong>Flat</strong> — title, ingredients, steps</td><td>290</td><td>5.3 s</td><td>Parsed cleanly</td></tr>
+<tr><td><strong>Flat + enums</strong> — adds difficulty, meal type</td><td>332</td><td>6.5 s</td><td>Parsed cleanly</td></tr>
+<tr><td><strong>Deeply nested</strong> — recipe → meta / components → items → quantity + macros</td><td>1,200 <em>(capped)</em></td><td>19.4 s</td><td><strong>Truncated and failed</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Four times the tokens, four times the wait, and then nothing usable — it hit the generation cap mid-structure and became the exact failure from <a href="0003-when-the-model-cant-comply.html">Lesson 03</a>. Deep nesting did not make the answer richer. It made it absent.</p>
+
+<h2>Three rules that follow</h2>
+
+<ul>
+  <li><strong>Flatten by default.</strong> Two levels of nesting is usually plenty. If you find yourself writing <code>a.b.c.d</code>, ask whether the model needs to express that, or whether your code can assemble it afterwards from something flatter.</li>
+  <li><strong>Prefer enums to free text</strong> where the answer is from a known set. An enum costs a handful of tokens, cannot be misspelled, and needs no validation — the grammar guarantees it. The measured cost of adding two enums was 42 tokens.</li>
+  <li><strong>Ask only for what you consume.</strong> Every field you do not read is pure latency. This sounds obvious and is routinely ignored, because adding a field to a schema feels free when you write it.</li>
+</ul>
+
+<h2>Do it: measure your own schema</h2>
+
+<ol class="steps">
+  <li>
+    <p>Run the comparison yourself:</p>
+    <pre><code>node assets/schema-bench.ts</code></pre>
+    <p>Three shapes, same prompt. <strong>Note the token counts</strong>, and watch the nested case fail.</p>
+  </li>
+  <li>
+    <p>Open <code>01-gluten-free-chef/chef.ts</code> and look at the <code>Recipe</code> schema with this in mind. It is two levels deep — a recipe with an array of ingredient objects — and every field is consumed by <code>check()</code> or printed. That is a well-shaped schema, and now you know why.</p>
+  </li>
+  <li>
+    <p>Try making it worse. Wrap it in an outer object, or split <code>grams</code> into <code>{ amount, unit }</code>, and re-run <code>npm run 01</code>. Compare how long the first recipe takes to appear.</p>
+  </li>
+  <li>
+    <p>Put it back.</p>
+  </li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>Every field costs tokens, and tokens cost seconds.</strong> Schema design is latency design.</li>
+    <li><strong>Deep nesting is the expensive kind of structure.</strong> Measured here: 4× the tokens, and it failed.</li>
+    <li><strong>Enums are cheap and self-validating.</strong> Use them wherever the answer comes from a known set.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>What the grammar can and cannot express</h2>
+  <p>Where JSON Schema features stop being enforceable, and how to design around the gap.</p>
+</div>
+
+<h2>Constraints the grammar enforces</h2>
+
+<p>The schema becomes a grammar, and a grammar is about <em>syntax</em>. So it enforces exactly the things that are structural:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Enforced mechanically</th><th>Not enforced</th></tr></thead>
+<tbody>
+<tr><td>Which keys exist, and that required ones appear</td><td>That a number is in a sensible range</td></tr>
+<tr><td>That a value is a string, number, boolean, array or object</td><td>That a string is a real ingredient and not invented</td></tr>
+<tr><td>That an enum value comes from your list</td><td>That the <em>right</em> enum value was chosen</td></tr>
+<tr><td>Nesting structure and array-ness</td><td>That an array has a sensible number of items</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The pattern: anything expressible as "which characters may come next" is guaranteed; anything requiring the model to have understood the world is not. Zod constraints like <code>.min(1)</code>, <code>.positive()</code> or <code>.email()</code> largely live on the right-hand column — they will be checked when you <em>parse</em> the reply, but they do not shape generation, so a violation becomes a parse failure rather than something the model was prevented from writing.</p>
+
+<div class="detour">
+  <span class="label">Design consequence</span>
+  <p>This means a Zod refinement is a <em>verification</em> tool, not a generation tool. If a constraint matters, put it in two places: the schema, so the parse rejects violations, and the prompt, so the model is steered away from them in the first place. Belt and braces, for the same reason Lesson 01's system prompt still says "answer only in the requested JSON".</p>
+</div>
+
+<h2>Moving structure out of the model</h2>
+
+<p>The nested schema failed because it asked the model to produce structure it did not need to invent. Compare the two framings of the same data:</p>
+
+<pre><code>// Expensive: the model generates the grouping
+components: [
+  { component: "the chicken", items: [ { name, quantity: { amount, unit }, macros: {…} } ] },
+  { component: "the dressing", items: [ … ] },
+]
+
+// Cheap: the model generates facts, your code does the grouping
+ingredients: [
+  { name: "chicken thigh", grams: 300, group: "chicken", protein_g: 54, … },
+  { name: "olive oil",     grams: 15,  group: "dressing", protein_g: 0,  … },
+]</code></pre>
+
+<p>Both carry the same information. The second is flat, costs far fewer tokens, and the grouping is a two-line <code>reduce</code> in TypeScript — code that cannot get it wrong, unlike a model that might put the oil in the wrong group. <strong>Structure your code is capable of deriving should be derived, not generated.</strong></p>
+
+<p>This is the same seam as the rest of the repo: the model supplies the judgement (what goes in the dish, roughly how much), and code supplies the determinism (arithmetic, grouping, formatting).</p>
+
+<h2>When a big schema is the right answer</h2>
+
+<p>Not every nested schema is a mistake. Reach for one when:</p>
+
+<ul>
+  <li><strong>The nesting carries real information</strong> the model genuinely decides — a tree whose shape is the answer, like an outline or a dependency graph.</li>
+  <li><strong>One call beats several.</strong> Three flat calls each pay their own prefill; one structured call may well be cheaper overall. Measure rather than assume.</li>
+  <li><strong>You have raised <code>num_predict</code> to match.</strong> A big schema with a default cap is Lesson 03 waiting to happen — the measured failure above was precisely this.</li>
+</ul>
+
+<h2>Do it: shape a schema deliberately</h2>
+
+<ol class="steps">
+  <li><p>Take the nested case in <code>assets/schema-bench.ts</code> and flatten it by hand — same information, fewer levels. Re-run and compare token counts.</p></li>
+  <li><p>Raise <code>num_predict</code> for the nested case until it completes, and note how long it takes. That is the real cost of the shape, now that it is not failing.</p></li>
+  <li><p>Replace one free-text field in your flattened version with an enum. Check the token count moves the way you expect.</p></li>
+  <li><p>Write down the rule you would give someone else about when to nest. If you can state it in one sentence, it is a candidate for an exercise — see <a href="0009-designing-an-exercise.html">Lesson 09</a>.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "Why did the deeply nested schema fail rather than just run slowly?",
+    "options": [
+      "The grammar rejected its nesting depth",
+      "Zod refused to parse that much nesting",
+      "It ran past the generation cap midway",
+      "The model does not support deep objects"
+    ],
+    "answer": 2,
+    "why": "It generated over 1,200 tokens of structure and hit num_predict before closing the object — done_reason came back as \"length\". A shape expensive enough becomes a Lesson 03 truncation."
+  },
+  {
+    "q": "Where should grouping of items into categories happen?",
+    "options": [
+      "In code, from flat fields the model gave",
+      "In the schema, so it is fully enforced",
+      "In the prompt, as written instructions",
+      "In a second call made after the first"
+    ],
+    "answer": 0,
+    "why": "Grouping is derivable, so code can do it deterministically and cheaply. Asking the model to generate the grouping spends tokens on structure and introduces a way for it to be wrong."
+  },
+  {
+    "q": "Does a Zod .positive() constraint stop the model emitting a negative number?",
+    "options": [
+      "Yes, it becomes part of the grammar",
+      "No, it is checked when you parse",
+      "Yes, but only on numeric fields",
+      "No, Zod ignores it during parsing"
+    ],
+    "answer": 1,
+    "why": "The grammar enforces syntax — types, keys, enum membership. Range constraints are verified at parse time, so a violation surfaces as a parse failure rather than something generation prevented. Put the constraint in the prompt too."
+  },
+  {
+    "q": "What is the cheapest way to constrain a field to a known set of values?",
+    "options": [
+      "Describe the valid options in the prompt",
+      "Validate it and retry when it is wrong",
+      "Use a string and normalise it in code",
+      "Declare it as an enum in the schema"
+    ],
+    "answer": 3,
+    "why": "An enum becomes part of the grammar, so an invalid value is unsamplable — no validation, no retry, no normalising. Measured cost of adding two enums to a flat schema: 42 tokens."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> the <a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md">llama.cpp GBNF guide</a>. It is the grammar layer your schema is compiled into, and reading what a grammar can express makes the enforced/not-enforced split above obvious rather than arbitrary.</p>
+
+<p>Then revisit the <a href="../reference/structured-output.html">structured output reference</a> with Part 2 in mind — the guarantee boundary table reads differently once you have seen a schema fail for being too ambitious.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> Good ones here: <em>"is one nested call cheaper than three flat ones?"</em> (genuinely measurable, and I would like to know), <em>"how do I express 'between 3 and 8 items' if the grammar cannot?"</em>, <em>"does field ordering in the schema change anything?"</em></p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md">llama.cpp — GBNF grammar guide</a>. What a grammar can and cannot express.</li>
+  <li><a href="https://ollama.com/blog/structured-outputs">Ollama blog — Structured outputs</a>. Official guidance on schema use.</li>
+  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/schema-bench.ts"><code>assets/schema-bench.ts</code></a> — flat 290 tok / 5.3 s, flat+enums 332 tok / 6.5 s, nested 1,200 tok capped and truncated at 19.4 s.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0004-fitting-a-model-in-memory.html">← Lesson 04</a>
+  <a href="0006-does-a-bigger-context-make-it-dumber.html">Lesson 06 →</a>
+  <a href="../reference/structured-output.html">Reference: Structured output</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

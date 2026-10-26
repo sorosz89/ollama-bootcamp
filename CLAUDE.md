@@ -44,10 +44,11 @@ The repo is also a learning workspace, driven by the `teach` skill, and it is tr
 - `RESOURCES.md` — trusted sources, each annotated with when to reach for it. Its `## Gaps` section names what no good source has been found for yet, and drives the next round of research.
 - `NOTES.md` — working notes, preferences, decisions, and the queue of candidate lessons.
 - `learning-records/NNNN-*.md` — what has been established and why it changes what to teach next. Sequential; scan for the highest number and increment.
-- `lessons/index.html` — the course map: every planned lesson, its track, and its status. Update it whenever a lesson ships or the plan changes; it is the only place the overall shape is visible.
+- `index.html` (repo root) — the course home page: every lesson, every reference sheet, every tool. The entry point, and the only place the overall shape is visible. Update it whenever a lesson or tool is added.
 - `lessons/NNNN-*.html` — one self-contained lesson per file, numbered sequentially. Short enough to finish in 10–15 minutes, one idea each.
 - `reference/*.html` — durable cheat sheets. Lessons are read once; these get reopened, so they carry the compressed version.
-- `assets/` — shared components. Reuse is the default: read this directory before authoring a lesson, and put anything a second lesson would duplicate here instead of inlining it.
+- `assets/` — shared components. Reuse is the default: read this directory before authoring a lesson, and put anything a second lesson would duplicate here instead of inlining it. Holds the stylesheet, the quiz component, and three measurement tools the lessons drive readers to run: `bench.ts` (timing receipt), `schema-bench.ts` (cost of schema shape), `needle.ts` (long-context retrieval).
+- `reference/glossary.html` — the canonical vocabulary. When a lesson uses a term from it, use it in that sense; when a lesson coins a term worth keeping, add it there.
 
 Conventions that are easy to break:
 

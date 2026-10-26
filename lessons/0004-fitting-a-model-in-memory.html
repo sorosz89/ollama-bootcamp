@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 04 · Fitting a model in your memory</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 04 · Running the model well</p>
+  <h1>Fitting a model in your memory</h1>
+  <p class="standfirst">Choosing a local model is mostly arithmetic, and the arithmetic is simpler than the jargon suggests. By the end of this you will be able to look at any model tag and say whether it will run well on your machine — before downloading 40 GB to find out.</p>
+  <p class="meta">Part 1 ~7 minutes · Part 2 ~10 minutes · measured on this machine, 26 Oct 2026</p>
+</header>
+
+<p><a href="0002-reading-the-machine.html">Lesson 02</a> ended with one rule: <code>ollama ps</code> should say <code>100% GPU</code>. This lesson is how to make that true on purpose rather than by luck.</p>
+
+<div class="tier">
+  <span class="label">Part 1</span>
+  <h2>The idea</h2>
+  <p>Three numbers decide everything: how big the model is, how much memory you have, and how much of it the conversation needs.</p>
+</div>
+
+<h2>Your memory is the budget</h2>
+
+<p>On an Apple Silicon Mac the CPU and GPU share one pool of memory. There is no separate graphics card with its own RAM — the 24 GB in this machine is the whole budget, and macOS needs several gigabytes of it to stay comfortable. Call it <strong>18 GB usable</strong> and you will not go far wrong.</p>
+
+<p>Three things have to fit inside that budget at once:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>What</th><th>How big</th></tr></thead>
+<tbody>
+<tr><td><strong>The weights</strong> — the model itself</td><td>Fixed. Whatever <code>ollama list</code> shows on disk, roughly.</td></tr>
+<tr><td><strong>The conversation</strong> — what it has read so far</td><td>Grows as you talk. This is the KV cache from Lesson 02.</td></tr>
+<tr><td><strong>Everything else</strong> — your OS, browser, editor</td><td>Several GB, and not optional.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Exceed the budget and the model does not fail — it spills onto the CPU and gets roughly ten times slower. That is the cliff, and it is the only outcome worth actively avoiding.</p>
+
+<h2>What the size of a model is made of</h2>
+
+<p>A model's size comes from two numbers multiplied together: <strong>how many parameters</strong> it has, and <strong>how many bits</strong> each one is stored in.</p>
+
+<p>Parameters are what the tag tells you: <code>9b</code> means roughly nine billion. Bits are what <em>quantization</em> sets. A parameter can be stored at full precision (16 bits) or squeezed down to 4 bits, which is lossy compression for neural networks — you lose a little accuracy and three quarters of the size.</p>
+
+<p>Almost everything you pull from Ollama is quantized to about 4 bits by default, which gives a useful rule of thumb:</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p><strong>Roughly 0.6–0.8 GB of memory per billion parameters</strong> at the usual 4-bit quantization, plus room for the conversation. A 9B model wants about 7 GB; a 70B model wants about 45, which is why it will not run here.</p>
+</div>
+
+<p>Check it against this machine: <code>qwen3.5:9b</code> is 9.7B parameters and 7.6 GB on disk — 0.78 GB per billion. The rule holds.</p>
+
+<h2>Choosing, in one table</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Your RAM</th><th>Comfortable size</th><th>Reasoning</th></tr></thead>
+<tbody>
+<tr><td>8 GB</td><td>3–4B</td><td>~3 GB of weights leaves room for the OS and a modest conversation.</td></tr>
+<tr><td>16 GB</td><td>7–9B</td><td>~6 GB of weights. The sweet spot for most laptops.</td></tr>
+<tr><td>24 GB <em>(this machine)</em></td><td>9–14B</td><td>~7–11 GB of weights, with real headroom for context.</td></tr>
+<tr><td>32 GB+</td><td>24–32B</td><td>Mixture-of-experts models become worth a look here.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Keep the weights at or under roughly 60% of total RAM. The remaining 40% is not waste — it is the conversation and the operating system.</p>
+
+<h2>Do it: audit what you have</h2>
+
+<ol class="steps">
+  <li>
+    <p>See what the model actually is, rather than what the tag implies:</p>
+    <pre><code>ollama show qwen3.5:9b</code></pre>
+    <p>Look for <strong>parameters</strong>, <strong>context length</strong> and <strong>quantization</strong>.</p>
+  </li>
+  <li>
+    <p>On this machine that prints <code>9.7B</code> parameters and a context length of <strong>262144</strong>. Compare that with what Lesson 02 measured in <code>ollama ps</code>: a context of <strong>4096</strong>. The model can hold 256k tokens; Ollama gave it 4k. <em>Capability and configuration are different things</em>, and this is the clearest example you will see.</p>
+  </li>
+  <li>
+    <p>Do the arithmetic for a model you are curious about. Parameters × 0.7 GB ≈ weights. Is that under 60% of your RAM? If not, do not pull it.</p>
+  </li>
+  <li>
+    <p>Check your headroom while a model is loaded: <code>ollama ps</code> shows <code>SIZE</code> as the live footprint. Subtract it from your usable RAM — that remainder is what a long conversation has to fit into.</p>
+  </li>
+</ol>
+
+<div class="takeaway">
+  <span class="label">If you remember only this</span>
+  <ol>
+    <li><strong>About 0.7 GB per billion parameters</strong> at the usual 4-bit quantization.</li>
+    <li><strong>Weights under ~60% of RAM.</strong> The rest belongs to the conversation and the OS.</li>
+    <li><strong>Too big does not fail, it crawls.</strong> A model that does not fit spills to CPU and runs ~10× slower.</li>
+  </ol>
+</div>
+
+<div class="tier" id="part2">
+  <span class="label">Part 2</span>
+  <h2>Reading quantization tags, and paying for context</h2>
+  <p>What <code>Q4_K_M</code> actually means, how much quality 4 bits costs, and the memory the conversation quietly takes.</p>
+</div>
+
+<h2>Decoding a quantization tag</h2>
+
+<p>Model files in the GGUF ecosystem carry tags like <code>Q4_K_M</code>. They decompose cleanly:</p>
+
+<div class="table-scroll">
+<table class="jargon">
+<tbody>
+<tr><td>Q4</td><td>Roughly 4 bits per weight. <code>Q2</code> through <code>Q8</code> exist; lower is smaller and worse.</td></tr>
+<tr><td>_K</td><td>A "k-quant" — a better method that spends more bits on the layers that matter. At equal file size, K beats the older style.<span class="cite"> (llama.cpp #2094)</span></td></tr>
+<tr><td>_M</td><td>Small, Medium or Large within that family. <code>Q4_K_M</code> keeps some tensors at higher precision than <code>Q4_K_S</code>.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>What does 4 bits cost you in quality? Using 16-bit as the baseline, <code>Q4_K_M</code> is reported at roughly +0.05 perplexity on a 7B model, with <code>Q5_K_M</code> at +0.014 for about 17% more size.<span class="cite"> (llama.cpp #2094)</span> In practice the community consensus is that <strong><code>Q4_K_M</code> is the default worth starting from</strong>, and that <code>Q8_0</code> and <code>F16</code> are "not recommended" for local use — much more RAM and markedly slower for a difference you are unlikely to notice.<span class="cite"> (llama.cpp #2094)</span></p>
+
+<div class="warn"><p><strong>Your model is not a k-quant.</strong> <code>ollama show qwen3.5:9b</code> reports its quantization as <code>nvfp4</code> — a 4-bit floating-point format, not a GGUF k-quant. The arithmetic above still holds (it is still ~4 bits per weight, still ~0.78 GB per billion), but do not expect every model you pull to carry a <code>Q…_K_M</code> tag. Read what <code>ollama show</code> tells you rather than assuming the naming scheme.</p></div>
+
+<div class="detour">
+  <span class="label">Rule of thumb</span>
+  <p>Given a choice between <strong>a bigger model quantized harder</strong> and <strong>a smaller model quantized lightly</strong>, at equal file size the bigger-and-harder option usually wins — down to about 4 bits. Below that, quality falls away quickly. This is folklore worth testing rather than trusting, and testing it would make an excellent exercise.</p>
+</div>
+
+<h2>The conversation is not free</h2>
+
+<p>The KV cache — the model's memory of what it has read — lives in RAM alongside the weights and grows with the context. Lesson 02 measured it directly on this machine: <code>SIZE</code> climbed from <strong>7.7 GB</strong> at a short prompt to <strong>9.1 GB</strong> at 7,250 tokens to <strong>11 GB</strong> at 48,050. That is 3.3 GB of conversation.</p>
+
+<p>Which reframes the context-window question. Raising your window does not cost you anything on its own — it costs when you <em>use</em> it. The relevant arithmetic is:</p>
+
+<pre><code>weights  +  (context actually used × cost per token)  +  OS  ≤  total RAM</code></pre>
+
+<p>Ollama's defaults are set from this. Under 24 GiB of VRAM you get a 4k context; 24–48 GiB gets 32k; 48 GiB and over gets 256k.<span class="cite"> (Context length docs)</span> Raise it with <code>OLLAMA_CONTEXT_LENGTH=64000 ollama serve</code>, and spend the memory deliberately.</p>
+
+<h2>Two knobs that buy memory back</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Knob</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>OLLAMA_FLASH_ATTENTION=1</code></td><td>"Significantly reduce memory usage as the context size grows". Used automatically where supported; this forces it on.<span class="cite"> (FAQ)</span></td></tr>
+<tr><td><code>OLLAMA_KV_CACHE_TYPE</code></td><td>Quantizes the conversation cache itself, default <code>f16</code>. "Significantly reduce memory usage when Flash Attention is enabled" — and it is global, affecting every model.<span class="cite"> (FAQ)</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Both trade a little quality or compatibility for headroom. Reach for them when you are close to the cliff, not before — an unquantized cache on a model that already fits is nothing to fix.</p>
+
+<h2>Do it: find your ceiling</h2>
+
+<ol class="steps">
+  <li><p>Note your current <code>SIZE</code> from <code>ollama ps</code> with a short conversation loaded.</p></li>
+  <li><p>Run a deliberately long prompt — <code>node assets/needle.ts --tokens 8000</code> will do it — then check <code>ollama ps</code> again and record the new <code>SIZE</code>. The difference, divided by 8,000, is your approximate cost per token of context.</p></li>
+  <li><p>Multiply that up. At what context length would weights plus cache reach your usable RAM? That number is your real ceiling, and it is almost certainly smaller than the 262,144 the model advertises.</p></li>
+  <li><p>Optional, and genuinely informative: pull a model one size up (<code>gemma3:12b</code> or similar), run one prompt, and compare <code>PROCESSOR</code>, <code>SIZE</code> and decode rate against your 9B. You are looking for the point where it stops saying <code>100% GPU</code>.</p></li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "A 14B model at the usual 4-bit quantization needs roughly how much memory?",
+    "options": [
+      "Around 10 GB, plus room for context",
+      "Around 28 GB, two bytes per weight",
+      "Around 3 GB, one nibble per weight",
+      "Around 56 GB, matching full precision"
+    ],
+    "answer": 0,
+    "why": "About 0.7 GB per billion parameters at 4 bits: 14 × 0.7 ≈ 10 GB of weights. The conversation and the OS come on top, which is why 60% of total RAM is the sensible ceiling for weights alone."
+  },
+  {
+    "q": "ollama show says the context length is 262144 but ollama ps says 4096. Why?",
+    "options": [
+      "The model was quantized down on pull",
+      "Ollama reports the figure incorrectly",
+      "One is capability, one is configuration",
+      "The context shrinks when memory is low"
+    ],
+    "answer": 2,
+    "why": "The model is built to handle 256k tokens; Ollama allocated a 4k window because that is the documented default under 24 GiB of VRAM. What a model can do and what it was given are separate questions."
+  },
+  {
+    "q": "What does the K in Q4_K_M tell you?",
+    "options": [
+      "The weights use a thousand buckets",
+      "A better method of spending the bits",
+      "The cache is kept in system memory",
+      "The model was trained with this size"
+    ],
+    "answer": 1,
+    "why": "K-quants allocate more precision to the layers that need it, so at equal file size they beat the older flat methods. The trailing S/M/L picks how generous that allocation is."
+  },
+  {
+    "q": "Your model does not fit in memory. What actually happens?",
+    "options": [
+      "Ollama refuses to load it at all",
+      "The context window is reduced to fit",
+      "It runs, about ten times more slowly",
+      "The weights are re-quantized smaller"
+    ],
+    "answer": 2,
+    "why": "It spills onto the CPU and keeps working, which is worse than failing outright because it is easy to miss. ollama ps shows the split under PROCESSOR — anything other than 100% GPU is the cliff."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> <a href="https://github.com/ggml-org/llama.cpp/discussions/2094">llama.cpp discussion #2094, "Difference in different quantization methods"</a>. It carries the actual size-and-perplexity table the whole ecosystem quotes, from the people who built the quantization. Read the table, ignore the arguing.</p>
+
+<p>Then <a href="https://docs.ollama.com/context-length">Ollama's context length doc</a> for the VRAM-to-default mapping, and the <a href="../reference/model-selection.html">model selection reference sheet</a> for the arithmetic in one page.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> Worth asking: <em>"is a 14B at 4-bit really better than a 9B at 8-bit?"</em> (folklore says yes, we could measure it), <em>"what is nvfp4 and why did my model get it?"</em>, <em>"should I raise my context window, and what would it cost?"</em></p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://github.com/ggml-org/llama.cpp/discussions/2094">llama.cpp — Difference in different quantization methods</a>. Size and perplexity figures, and the "not recommended" marks on Q8_0/F16/F32.</li>
+  <li><a href="https://docs.ollama.com/context-length">Ollama docs — Context length</a>. Official; VRAM-based defaults and <code>OLLAMA_CONTEXT_LENGTH</code>.</li>
+  <li><a href="https://docs.ollama.com/faq">Ollama FAQ</a>. Official; flash attention and <code>OLLAMA_KV_CACHE_TYPE</code>.</li>
+  <li>Measurements: <code>ollama show</code> and <code>ollama ps</code> on this machine, 26 Oct 2026 — 9.7B parameters, 7.6 GB on disk, <code>nvfp4</code>, advertised context 262144, allocated 4096.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="0003-when-the-model-cant-comply.html">← Lesson 03</a>
+  <a href="0005-schemas-a-small-model-can-fill.html">Lesson 05 →</a>
+  <a href="../reference/model-selection.html">Reference: Model selection</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>
