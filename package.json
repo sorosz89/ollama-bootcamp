@@ -8,7 +8,8 @@
   "scripts": {
     "test": "node --test",
     "typecheck": "tsc --noEmit",
-    "01": "node 01-gluten-free-chef/chef.ts"
+    "01": "node 01-gluten-free-chef/chef.ts",
+    "challenge": "node --test challenges/*/verify.ts"
   },
   "dependencies": {
     "ollama": "^0.6",

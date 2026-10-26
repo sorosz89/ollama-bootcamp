@@ -48,6 +48,7 @@ The repo is also a learning workspace, driven by the `teach` skill, and it is tr
 - `lessons/NNNN-*.html` — one self-contained lesson per file, numbered sequentially. Short enough to finish in 10–15 minutes, one idea each.
 - `reference/*.html` — durable cheat sheets. Lessons are read once; these get reopened, so they carry the compressed version.
 - `assets/` — shared components. Reuse is the default: read this directory before authoring a lesson, and put anything a second lesson would duplicate here instead of inlining it. Holds the stylesheet, the quiz component, and three measurement tools the lessons drive readers to run: `bench.ts` (timing receipt), `schema-bench.ts` (cost of schema shape), `needle.ts` (long-context retrieval).
+- `challenges/` — five scenario briefs (`index.html`) plus a directory each holding `starter.ts` (the learner's to fill) and `verify.ts` (executable acceptance criteria). **Never commit solutions to `starter.ts`** — a solved starter destroys the challenge for its only user. `verify.ts` files are deliberately failing until solved, which is safe because bare `node --test` only auto-discovers `*.test.ts`, so CI stays green; run them with `npm run challenge`. Challenge code *is* typechecked (`tsconfig.json` includes `*/*/*.ts`), so starters must compile as given.
 - `reference/glossary.html` — the canonical vocabulary. When a lesson uses a term from it, use it in that sense; when a lesson coins a term worth keeping, add it there.
 
 Conventions that are easy to break:

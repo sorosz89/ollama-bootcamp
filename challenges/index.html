@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenges · Ollama Bootcamp</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Challenges</p>
+  <h1>Five things to build</h1>
+  <p class="standfirst">The lessons tell you the answer and then ask you to watch it happen. These do not. Each one is a scenario with acceptance criteria and a test suite you have to turn green — the answer is not written down anywhere.</p>
+  <p class="meta">4 auto-graded · 1 open · 37 assertions in total</p>
+</header>
+
+<p>Every challenge is a directory with two files. <code>starter.ts</code> is yours to fill in. <code>verify.ts</code> is the acceptance criteria, executable:</p>
+
+<pre><code>npm run challenge                                        # all five
+node --test challenges/01-dont-crash-at-2am/verify.ts    # just one</code></pre>
+
+<p>They fail until you make them pass. That is the point — a failing assertion that names what it wanted is a better teacher than a paragraph telling you in advance.</p>
+
+<div class="note"><p><strong>Read the brief, not the tests.</strong> You can open <code>verify.ts</code>, and sometimes you will have to. But the briefs below are written to be enough, and working from the scenario rather than the assertions is the part that resembles real work.</p></div>
+
+<div class="track">
+  <h3>Challenge 01 · Don't crash at 2am</h3>
+
+  <div class="card">
+    <div class="n">01</div>
+    <div>
+      <p class="title">The scenario<span class="tag done">Graded</span></p>
+      <p class="blurb">Your recipe tool is running on a tablet in a café kitchen. At 2am the overnight prep list asks for a fifteen-ingredient feast, the reply runs past the token cap, and the app dies with a <code>SyntaxError</code> in front of nobody who can fix it. You are asked to make it never do that again.</p>
+    </div>
+  </div>
+
+  <p><strong>Build:</strong> <code>decide(reply, cap, attempt, maxAttempts)</code> — a pure function returning <code>parse</code>, <code>retry</code> or <code>give-up</code>.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Never attempt to parse a reply that stopped early.</li>
+    <li>Give a truncated reply <em>more room</em> on retry — a retry that changes nothing is just a slower failure.</li>
+    <li>Never ask for more than <code>HARD_CAP</code> tokens, however many times it truncates.</li>
+    <li>Distinguish "ran out of room" from "came back malformed" from "the model was unloaded". They do not deserve the same response.</li>
+    <li>Terminate. Always. There is a test that runs your function in a loop and fails if it never stops.</li>
+    <li>Explain itself when it gives up.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 03. ~30 minutes.</p>
+</div>
+
+<div class="track">
+  <h3>Challenge 02 · The filter that missed</h3>
+
+  <div class="card">
+    <div class="n">02</div>
+    <div>
+      <p class="title">The scenario<span class="tag done">Graded</span></p>
+      <p class="blurb">A coeliac customer reports being served something with soy sauce in it. The recipe went through the gluten filter and came out clean. You check, and find the model had written <code>"Soy  Sauce"</code> with two spaces — and the filter's word-boundary regex never matched. This is a real bug in this repo, and it is live right now.</p>
+    </div>
+  </div>
+
+  <p><strong>Verify the bug first:</strong></p>
+  <pre><code>node --input-type=module -e 'import {GLUTEN_RE} from "./01-gluten-free-chef/chef.ts";
+console.log(GLUTEN_RE.test("soy  sauce"), GLUTEN_RE.test("Soy-Sauce"))'</code></pre>
+  <p>Both print <code>false</code>. Models write names inconsistently, and a safety filter that depends on exact spacing is not a safety filter.</p>
+
+  <p><strong>Build:</strong> <code>canonicalName(raw)</code> and <code>containsGluten(rawName)</code>.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Treat <code>"soy sauce"</code>, <code>"Soy  Sauce"</code>, <code>"Soy-Sauce"</code> and <code>"soy_sauce"</code> as the same thing.</li>
+    <li>Keep catching everything the current filter catches.</li>
+    <li>Keep <em>not</em> flagging <code>buckwheat</code>, <code>maltodextrin</code> or <code>tamari</code> — the false positives the current regex was carefully written to avoid.</li>
+    <li>Trust an explicit label: <code>"gluten-free breadcrumbs"</code> is not a gluten ingredient. The repo's Caveats section admits this false positive; here you fix it.</li>
+    <li>Not be fooled by <code>"wheat flour (not gluten free)"</code>.</li>
+  </ul>
+
+  <div class="warn"><p>This is the one with real-world stakes attached, and it is also the one where passing the tests is not the same as being safe. When you are done, write one sentence for the exercise's Caveats about what your filter still cannot catch.</p></div>
+
+  <p class="cite">Builds on Lesson 07. ~40 minutes.</p>
+</div>
+
+<div class="track">
+  <h3>Challenge 03 · Fit the brief in the budget</h3>
+
+  <div class="card">
+    <div class="n">03</div>
+    <div>
+      <p class="title">The scenario<span class="tag done">Graded</span></p>
+      <p class="blurb">Product have been using the tool and want six more things on every recipe: cuisine, difficulty, prep time, cook time, allergens, and the equipment needed. They also want the first recipe on screen faster than it is now. Both, please.</p>
+    </div>
+  </div>
+
+  <p><strong>Build:</strong> the <code>BriefedRecipe</code> Zod schema.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Keep everything the recipe already carries — title, servings, ingredients, steps.</li>
+    <li>Add all six new fields.</li>
+    <li>Use enums wherever the value comes from a known set. Free text where a list would do is a bug here, not a style preference.</li>
+    <li>Contain nothing the code could derive. <em>Total</em> time is prep plus cook; asking the model for it buys you a chance of it being wrong.</li>
+    <li>Stay within <strong>2 levels of nesting</strong> and <strong>16 leaf fields</strong>. Both budgets come from Lesson 05's measurements, where a deep schema cost 4× the tokens and then failed.</li>
+    <li>Actually validate a plausible recipe.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 05. ~30 minutes.</p>
+</div>
+
+<div class="track">
+  <h3>Challenge 04 · Know when to stop</h3>
+
+  <div class="card">
+    <div class="n">04</div>
+    <div>
+      <p class="title">The scenario<span class="tag done">Graded</span></p>
+      <p class="blurb">A support note: "it thinks for thirty seconds and then gives me the same wrong answer it had at the start." You watch the log. Attempt one is 0.5 off target, attempt two 0.2, attempt three back to 0.5. It is cycling — fixing the protein breaks the calories, fixing the calories breaks the protein — and the fixed count of three attempts means it pays for all of it before giving up.</p>
+    </div>
+  </div>
+
+  <p><strong>Build:</strong> <code>shouldContinue(distances, maxAttempts)</code>, given how far from target each attempt landed.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Continue while there is meaningful progress — at least <code>MIN_IMPROVEMENT</code> relative to the attempt before.</li>
+    <li>Stop when progress stalls. Half a percent is noise, not improvement.</li>
+    <li>Stop when the answer gets <em>worse</em>.</li>
+    <li>Stop when it oscillates, rather than cycling forever between two bad answers.</li>
+    <li>Stop at zero. The target was hit.</li>
+    <li>Respect <code>maxAttempts</code> as an absolute ceiling.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 07. ~25 minutes.</p>
+</div>
+
+<div class="track">
+  <h3>Challenge 05 · The café board</h3>
+
+  <div class="card">
+    <div class="n">05</div>
+    <div>
+      <p class="title">The scenario<span class="tag plan">Open</span></p>
+      <p class="blurb">The café wants a prep-list tool. The chef types what is in the walk-in fridge — in a hurry, with typos, sometimes just "chicken, rice, whatever greens" — and gets back a prep list for the day. It runs on one laptop in the back office. It must not crash, it must not quietly invent an allergen, and when it is unsure it has to say so rather than guess.</p>
+    </div>
+  </div>
+
+  <p>There is no right answer to this one and no test that can check your judgement. What the verifier checks is that you shipped it the way this repo ships things: a real exercise directory, a README with honest Caveats, tests that run without a model, and the logic pulled out where tests can reach it.</p>
+
+  <p><strong>The constraints that make it realistic:</strong></p>
+  <ul>
+    <li><strong>Hostile input.</strong> The chef is busy. Empty strings, typos, one-word answers, nonsense. None of it may crash the tool.</li>
+    <li><strong>A latency budget.</strong> Something useful on screen within a few seconds. You know from Lesson 08 that this is mostly a question of streaming and warm-up, and from Lesson 05 that schema shape decides the rest.</li>
+    <li><strong>One laptop.</strong> 24 GB, shared with everything else the office runs. Lesson 04 is the arithmetic.</li>
+    <li><strong>Honest uncertainty.</strong> When the model's output fails your checks, the tool says so. Never present a verified-wrong value as if it were fine.</li>
+  </ul>
+
+  <p><strong>Grade yourself on these</strong> — they are the questions I would ask:</p>
+  <ol>
+    <li>What exactly does code decide, and what does the model decide? Can you state the seam in one sentence?</li>
+    <li>What happens on the worst input you can think of? Have you actually tried it?</li>
+    <li>What does your Caveats section admit? If it admits nothing, it is not finished.</li>
+    <li>Could someone else run it from your README alone?</li>
+  </ol>
+
+  <p class="cite">Builds on everything. A few hours. This is the exercise-02 candidate from <a href="../lessons/0009-designing-an-exercise.html">Lesson 09</a>, made concrete.</p>
+</div>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to tell you what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages were written to be read, and most of them will get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review any of these.</strong> Paste what you wrote and I will argue with it. For Challenge 05 especially — an open brief graded only by your own judgement is exactly the case where a second opinion is worth having.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../index.html">All lessons</a>
+  <a href="../lessons/0003-when-the-model-cant-comply.html">Lesson 03</a>
+  <a href="../lessons/0005-schemas-a-small-model-can-fill.html">Lesson 05</a>
+  <a href="../lessons/0007-what-to-verify-what-to-reask.html">Lesson 07</a>
+  <a href="../reference/glossary.html">Glossary</a>
+</nav>
+
+</main>
+</body>
+</html>

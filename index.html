@@ -105,6 +105,26 @@
   </div>
 </div>
 
+<h2>Challenges</h2>
+
+<p>The lessons show you the answer and ask you to watch it happen. <a href="challenges/index.html"><strong>The five challenges</strong></a> do not: each is a scenario with acceptance criteria and a test suite to turn green, and the answer is written down nowhere.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>#</th><th>Scenario</th><th>Graded by</th></tr></thead>
+<tbody>
+<tr><td>01</td><td><strong>Don't crash at 2am.</strong> A truncated reply kills the app in a café kitchen overnight.</td><td>8 assertions</td></tr>
+<tr><td>02</td><td><strong>The filter that missed.</strong> A coeliac customer was served soy sauce. The filter said it was clean. <em>This bug is live in this repo.</em></td><td>7 assertions</td></tr>
+<tr><td>03</td><td><strong>Fit the brief in the budget.</strong> Product want six new fields and a faster first result.</td><td>7 assertions</td></tr>
+<tr><td>04</td><td><strong>Know when to stop.</strong> "It thinks for thirty seconds and gives the same wrong answer."</td><td>9 assertions</td></tr>
+<tr><td>05</td><td><strong>The café board.</strong> An open brief with hostile input, a latency budget and one laptop.</td><td>Your judgement, plus 6 structural checks</td></tr>
+</tbody>
+</table>
+</div>
+
+<pre><code>npm run challenge                                        # all five
+node --test challenges/01-dont-crash-at-2am/verify.ts    # just one</code></pre>
+
 <h2>Reference sheets</h2>
 
 <p>Lessons are read once; these get reopened. They are the compressed versions, built to print.</p>

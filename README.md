@@ -29,6 +29,14 @@ The repo tracks its own learning trail, not just the finished exercises.
 8. [Staying fast in something real](lessons/0008-staying-fast-in-something-real.html) — streaming, warm-up, cancellation, concurrency
 9. [Designing an exercise from a finding](lessons/0009-designing-an-exercise.html) — turning a surprise into exercise 02
 
+## Challenges
+
+Five scenarios with executable acceptance criteria — [the briefs](challenges/index.html). Unlike the lessons, the answers are not written down.
+
+```bash
+npm run challenge     # all five; they fail until you make them pass
+```
+
 ## Setup
 
 ```bash
