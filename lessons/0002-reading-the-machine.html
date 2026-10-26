@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 02 · Reading the machine</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Lesson 02 · Running models well</p>
+  <h1>Reading the machine</h1>
+  <p class="standfirst">Every Ollama reply ships with a timing receipt. Once you can read it, "the model feels slow" turns into a number with a cause — and most of the folklore about local models turns out to be checkable.</p>
+  <p class="meta">~14 minutes · Ollama running, <code>qwen3.5:9b</code> · all figures measured on this machine, 26 Oct 2026</p>
+</header>
+
+<p>In <a href="0001-the-grammar-not-the-prompt.html">Lesson 01</a> you saw that the schema guarantees shape and leaves truth to you. This lesson is the other half of running a model locally: nobody is managing the hardware for you, so the performance characteristics are now yours to read.</p>
+
+<div class="keystone">
+  <span class="label">The keystone</span>
+  <p>A local model has <strong>two</strong> speeds, not one. <em>Prefill</em> chews through your prompt in parallel; <em>decode</em> emits the reply one token at a time. "Tokens per second" means nothing until you say which one.</p>
+</div>
+
+<h2>The receipt</h2>
+
+<p>Set <code>"stream": false</code> and every response carries six timing fields. All durations are in <strong>nanoseconds</strong>.<span class="cite"> (Ollama API reference)</span></p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Field</th><th>Official meaning</th><th>What it tells you</th></tr></thead>
+<tbody>
+<tr><td><code>load_duration</code></td><td>"time spent in nanoseconds loading the model"</td><td>Cold start. Non-zero means the model was not resident — a <code>keep_alive</code> problem, not a speed problem.</td></tr>
+<tr><td><code>prompt_eval_count</code></td><td>"number of tokens in the prompt"</td><td>How much history you are re-sending on every single turn.</td></tr>
+<tr><td><code>prompt_eval_duration</code></td><td>"time spent in nanoseconds evaluating <strong>uncached</strong> prompt tokens"</td><td>Prefill time. The word <em>uncached</em> is the interesting one — see below.</td></tr>
+<tr><td><code>eval_count</code></td><td>"number of tokens in the response"</td><td>How long the answer was.</td></tr>
+<tr><td><code>eval_duration</code></td><td>"time in nanoseconds spent generating the response"</td><td>Decode time. This is the number people mean by "tokens per second".</td></tr>
+<tr><td><code>total_duration</code></td><td>"time spent generating the response"</td><td>Wall clock. Load + prefill + decode + overhead.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>The docs give the formula outright: divide <code>eval_count</code> by <code>eval_duration</code> and multiply by 10<sup>9</sup>.<span class="cite"> (Ollama API reference)</span> That is the decode rate. The same arithmetic on the <code>prompt_eval_*</code> pair gives the prefill rate, and the two are nothing alike.</p>
+
+<h2>Your machine, measured</h2>
+
+<p>These are real numbers from this laptop — 24 GB Apple Silicon, <code>qwen3.5:9b</code>, <code>mlx</code> runner — not illustrative ones. Yours will drift a little run to run; the <em>ratios</em> are the lesson.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Measurement</th><th>Result</th><th>Reading</th></tr></thead>
+<tbody>
+<tr><td>Cold <code>load_duration</code></td><td><strong>3.41 s</strong></td><td>The pause before your first answer is loading, not thinking. Default residency is 5 minutes.<span class="cite"> (FAQ)</span></td></tr>
+<tr><td>Warm <code>load_duration</code></td><td><strong>0.00 s</strong></td><td>Still resident. Nothing to do.</td></tr>
+<tr><td>Prefill, fresh prompt</td><td><strong>~120 tok/s</strong></td><td>Reading your prompt.</td></tr>
+<tr><td>Prefill, identical prompt repeated</td><td><strong>~881 tok/s</strong></td><td>7× faster — the prefix was cached, so almost nothing needed evaluating.</td></tr>
+<tr><td>Decode</td><td><strong>50–55 tok/s</strong></td><td>Writing the reply. Roughly a tenth of cached prefill speed.</td></tr>
+<tr><td>Decode on the cold run</td><td><strong>27 tok/s</strong></td><td>Don't benchmark the first call. It is always a lie.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note"><p><strong>Why caching matters more than it looks.</strong> A chat resends the entire history every turn. Because the unchanged prefix is cached, the cost of turn <em>n</em> is dominated by what you <em>appended</em>, not by the whole transcript. That is what makes multi-turn chat affordable at all — and it is why a chat that edits its own earlier messages suddenly gets slow.</p></div>
+
+<h2><code>ollama ps</code>, and the thing it does not tell you</h2>
+
+<p>One command, four columns worth reading:</p>
+
+<pre><code>$ ollama ps
+NAME          ID              SIZE     PROCESSOR    CONTEXT    RUNNER    UNTIL
+qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minutes from now</code></pre>
+
+<p><strong><code>PROCESSOR</code> is the one that matters.</strong> <code>100% GPU</code> is where you want to live. Anything like <code>48%/52% CPU/GPU</code> means the model did not fit and part of it is running on the CPU, which is the single biggest performance cliff available to you. Ollama's own guidance: "avoid offloading the model to CPU. Verify the split under <code>PROCESSOR</code>".<span class="cite"> (Context length docs)</span></p>
+
+<p><strong><code>SIZE</code> is not the file size.</strong> It is the live footprint: weights plus the KV cache for the context. Watch it grow as you feed longer prompts.</p>
+
+<p>Now the surprise. <code>CONTEXT</code> reads <strong>4096</strong> here, which matches the documented default for machines under 24 GiB of VRAM.<span class="cite"> (Context length docs)</span> The obvious conclusion is that a conversation longer than 4096 tokens gets truncated and the system prompt silently falls out the back. <strong>That is not what happens on this setup.</strong> Measured:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Prompt sent</th><th><code>prompt_eval_count</code></th><th>Prefill time</th><th><code>SIZE</code> after</th><th>Recalled the system prompt?</th></tr></thead>
+<tbody>
+<tr><td>Tiny</td><td>49</td><td>&lt; 0.1 s</td><td>7.7 GB</td><td>Yes</td></tr>
+<tr><td>Oversized</td><td>7,250</td><td>~2 s</td><td>9.1 GB</td><td>Yes</td></tr>
+<tr><td>Very oversized</td><td>20,450</td><td>64 s</td><td>—</td><td>Yes</td></tr>
+<tr><td>Absurd</td><td>48,050</td><td><strong>120 s</strong></td><td>11 GB</td><td>Yes</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Forty-eight thousand tokens through a window reported as 4096, with a codeword planted in the system prompt still recalled perfectly, and <code>ollama ps</code> still insisting on <code>4096</code> throughout. The runner grew the KV cache on demand; the reported number was the configured default, not a guillotine.</p>
+
+<div class="warn"><p><strong>Hold this loosely.</strong> That result is from one runner (<code>mlx</code>) on one machine in October 2026. On llama.cpp-backed runners, exceeding <code>num_ctx</code> has historically meant the context slides and the oldest tokens — your system prompt — are dropped. The transferable lesson is not "overflow is safe", it is <strong>measure your own setup before believing either story</strong>, which is exactly what the receipt is for.</p></div>
+
+<p>So the real cost of a long history here is not amnesia. It is <strong>two minutes of prefill and 3 GB of extra RAM</strong>. That is a latency and memory bill, and it arrives quietly.</p>
+
+<h2>What this costs <code>chef.ts</code></h2>
+
+<p>Measured against the actual exercise, one retry round at a time:</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Attempt</th><th><code>prompt_eval_count</code></th><th>Reply</th><th>Decode</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>95 tok</td><td>482 tok</td><td>58.5 tok/s</td></tr>
+<tr><td>2</td><td>606 tok</td><td>482 tok</td><td>67.3 tok/s</td></tr>
+<tr><td>3</td><td>1,120 tok</td><td>482 tok</td><td>70.1 tok/s</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>A recipe costs a steady <strong>~482 tokens</strong>, and each retry round adds <strong>~512 tokens</strong> to the prompt. <code>chef.ts</code> never clears <code>history</code> between wishes, so the cost compounds across a session: three wishes with retries puts you several thousand tokens deep, paying prefill on all of it, for context the model mostly does not need. The recipes stay correct. They just get slower to start and heavier in RAM.</p>
+
+<div class="win"><p><strong>The design question this raises:</strong> does <code>chef.ts</code> actually benefit from remembering wish #1 while answering wish #3? If not, the history could reset per wish — cheaper, faster, and arguably better recipes. If so, it should be trimmed deliberately rather than by accident. Either way it should be a decision, not a side effect of a <code>while</code> loop.</p></div>
+
+<h2>Do it: take your own measurements</h2>
+
+<ol class="steps">
+  <li>
+    <p>Measure a cold start, then prove the cache exists:</p>
+    <pre><code>node assets/bench.ts --cold --repeat 2 "Explain why rice flour behaves differently from wheat flour."</code></pre>
+    <p>Run 1 shows a real <code>load</code>. Run 2's prefill should be several times faster on an identical prompt. <strong>Write down your two prefill rates.</strong></p>
+  </li>
+  <li>
+    <p>While it is still warm, check the split:</p>
+    <pre><code>ollama ps</code></pre>
+    <p>Confirm <code>100% GPU</code> and note your <code>CONTEXT</code> and <code>SIZE</code>.</p>
+  </li>
+  <li>
+    <p>Make it spill. Pull something that cannot fit — <code>ollama pull llama3.3:70b</code> is 43 GB against your 24 — run one prompt, and look at <code>PROCESSOR</code> and the decode rate. <em>Skip this if you would rather not spend the disk;</em> the number to expect is a decode rate roughly an order of magnitude worse. Knowing what the cliff looks like is worth one slow prompt.</p>
+  </li>
+  <li>
+    <p>Now watch your own exercise. Run <code>npm run 01</code>, ask for three different recipes in one session, and after each one check <code>ollama ps</code>. <strong>Watch <code>SIZE</code> climb.</strong> That is your conversation history turning into resident memory.</p>
+  </li>
+  <li>
+    <p>Decide the design question above, and write your answer into the exercise's Caveats or Stretch goals. An honest "this grows unboundedly and here is why we allow it" is a better teaching artifact than silence.</p>
+  </li>
+</ol>
+
+<h2>Check yourself</h2>
+
+<div class="quiz" data-title="Retrieval practice">
+<script type="application/json">
+[
+  {
+    "q": "Someone says their local model runs at 400 tokens per second. What is missing?",
+    "options": [
+      "Whether the reply was actually correct",
+      "Which of the two rates they measured",
+      "The quantization level of the weights",
+      "How many tokens the prompt contained"
+    ],
+    "answer": 1,
+    "why": "Prefill and decode differ by roughly an order of magnitude — measured here at ~120 and ~50 tok/s, or ~881 prefill when cached. A single figure without saying which one is unreadable."
+  },
+  {
+    "q": "The first reply after a quiet hour takes four seconds. Which field explains it?",
+    "options": [
+      "eval_duration, the decoding was slow",
+      "prompt_eval_count, the prompt was long",
+      "total_duration, the server was busy",
+      "load_duration, the model was unloaded"
+    ],
+    "answer": 3,
+    "why": "Models unload after five minutes idle by default. Cold load measured 3.41 s here. Raise keep_alive to keep it resident; the model is not thinking, it is arriving."
+  },
+  {
+    "q": "Re-sending an identical prompt prefills about seven times faster. Why?",
+    "options": [
+      "Only uncached prompt tokens are timed",
+      "The whole reply came out of a cache",
+      "The weights had fully settled in memory",
+      "The sampler skipped its grammar check"
+    ],
+    "answer": 0,
+    "why": "The docs define prompt_eval_duration as time evaluating *uncached* prompt tokens. An unchanged prefix is already in the KV cache, so turn n mostly costs what you appended — which is what makes multi-turn chat viable."
+  },
+  {
+    "q": "ollama ps reports 48%/52% CPU/GPU. What have you learned?",
+    "options": [
+      "The context window is far too small",
+      "The model is running at half its speed",
+      "Part of the model did not fit in RAM",
+      "Two separate models are loaded here"
+    ],
+    "answer": 2,
+    "why": "A split processor means the weights plus KV cache exceeded available memory, so layers spilled to CPU. It is the biggest performance cliff there is — fix it with a smaller model, a smaller context, or by freeing memory."
+  }
+]
+</script>
+</div>
+
+<h2>Read this next</h2>
+
+<p><strong>Primary source:</strong> the <a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference</a>, specifically the response-field list for <code>/api/generate</code>. It is the authoritative definition of all six timing fields and gives the tokens-per-second formula directly. Short enough to read in full.</p>
+
+<p>Then the <a href="https://docs.ollama.com/context-length">context length doc</a> — the VRAM-to-default-context table, how to raise it with <code>OLLAMA_CONTEXT_LENGTH</code>, and the instruction to verify the <code>PROCESSOR</code> split. It is the document that predicted your 4096, and the one whose implications your own measurements then complicated.</p>
+
+<div class="ask no-print">
+  <p><strong>Ask me things.</strong> Live questions from this lesson: <em>"should chef.ts reset history per wish?"</em>, <em>"how do I actually raise my context window, and what does it cost in RAM?"</em>, <em>"what is the mlx runner and why does my machine use it?"</em>, <em>"how would I check whether a bigger context makes qwen dumber?"</em> The last one is a genuinely open question and a good candidate for exercise 02.</p>
+</div>
+
+<h2 id="sources">Sources</h2>
+<ul class="sources">
+  <li><a href="https://github.com/ollama/ollama/blob/main/docs/api.md">Ollama API reference — response timing fields and the tok/s formula</a>. Official.</li>
+  <li><a href="https://docs.ollama.com/context-length">Ollama docs — Context length</a>. Official; VRAM-based context defaults, <code>OLLAMA_CONTEXT_LENGTH</code>, and the <code>ollama ps</code> <code>PROCESSOR</code> guidance.</li>
+  <li><a href="https://docs.ollama.com/faq">Ollama FAQ — keeping models in memory</a>. Official; <code>keep_alive</code> semantics, the 5-minute default, <code>OLLAMA_KEEP_ALIVE</code>.</li>
+  <li>Measurements in this lesson: taken on this machine, 26 Oct 2026, Ollama 0.6.x, <code>qwen3.5:9b</code>, <code>mlx</code> runner, 24 GB unified memory. Reproduce them with <a href="../assets/bench.ts"><code>assets/bench.ts</code></a>.</li>
+</ul>
+
+<nav class="footer-nav">
+  <a href="0001-the-grammar-not-the-prompt.html">← Lesson 01: The grammar, not the prompt</a>
+  <a href="../reference/performance.html">Reference: Performance &amp; diagnostics →</a>
+  <a href="../reference/structured-output.html">Reference: Structured output</a>
+  <a href="../MISSION.md">Mission</a>
+</nav>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -12,6 +12,10 @@
   The grammar layer Ollama sits on. Use for: understanding what a grammar can and cannot express, and hand-writing constraints beyond JSON.
 - [Ollama model library](https://ollama.com/library)
   Sizes, tags, quantizations, capabilities per model. Use for: picking a model against a RAM budget; always confirm with `ollama show`.
+- [Ollama docs: Context length](https://docs.ollama.com/context-length)
+  VRAM-to-default-context table, `OLLAMA_CONTEXT_LENGTH`, and the instruction to verify the `PROCESSOR` split in `ollama ps`. Use for: why your context is the size it is, and what raising it costs.
+- [Ollama FAQ](https://docs.ollama.com/faq)
+  Official. Use for: `keep_alive` semantics and the 5-minute default, concurrency, and server configuration.
 - [`ollama-js` on npm](https://www.npmjs.com/package/ollama)
   The official JS/TS client used by this repo. Use for: the typed request/response shapes, streaming, and the `think` option.
 
@@ -24,5 +28,6 @@
 
 ## Gaps
 
-- No trusted, current source yet for *measuring* local throughput properly (tokens/s methodology, prompt vs eval rate, cold vs warm). Needed before the "running models well" lessons.
-- No trusted source yet on quantization quality trade-offs (q4_K_M vs q8 vs fp16) at a given parameter count.
+- No trusted source yet on quantization quality trade-offs (q4_K_M vs q8 vs fp16) at a given parameter count. Needed before advising anyone which tag to pull.
+- No authoritative source found on what the `mlx` runner does differently from the llama.cpp runner, which Lesson 02's context measurements made into an open question.
+- Throughput methodology: **closed** 26 Oct 2026. The API reference defines the timing fields and the tok/s formula; `assets/bench.ts` applies it.

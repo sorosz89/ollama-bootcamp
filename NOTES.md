@@ -14,4 +14,5 @@
 - **The teaching workspace is tracked in the public repo** (decided 26 Oct 2026). The learning trail is portfolio material in its own right, so lessons, reference sheets, mission and learning records all ship alongside the exercises. Write them for a reader who is not Sandor: no private notes, no half-finished drafts committed.
 
 ## Open questions to revisit
-- Lesson 02 candidate: measuring and reading local throughput (`--verbose`, `ollama ps`, cold vs warm, CPU spill).
+- **Posed to Sandor in Lesson 02, unanswered:** should `chef.ts` reset `history` per wish? It currently never clears, so prefill cost compounds across a session. His answer shapes exercise 01's next revision.
+- Lesson 03 candidates, in rough preference order: (a) raising the context window and measuring what it costs in RAM and prefill; (b) does a bigger context make the model measurably worse — a real experiment, and a strong candidate for exercise 02; (c) quantization trade-offs, blocked on finding a trusted source.

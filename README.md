@@ -17,7 +17,10 @@ The repo tracks its own learning trail, not just the finished exercises.
 | [reference/](reference/) | Cheat sheets worth reopening: the compressed version of each lesson |
 | [MISSION.md](MISSION.md), [RESOURCES.md](RESOURCES.md) | Why this is being learned, and the sources it is grounded in |
 
-Start with [Lesson 01 · The grammar, not the prompt](lessons/0001-the-grammar-not-the-prompt.html) — why `format` guarantees the shape of a local model's answer and nothing else.
+Lessons so far:
+
+1. [The grammar, not the prompt](lessons/0001-the-grammar-not-the-prompt.html) — why `format` guarantees the shape of a local model's answer and nothing else
+2. [Reading the machine](lessons/0002-reading-the-machine.html) — the timing receipt on every reply, the two speeds a model has, and what a long chat really costs
 
 ## Setup
 

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Performance &amp; diagnostics</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Ollama Bootcamp · Reference sheet</p>
+  <h1>Performance &amp; diagnostics</h1>
+  <p class="standfirst">Reading the timing receipt, the two rates, and the short list of things that actually make a local model slow.</p>
+  <p class="meta">Checked 26 Oct 2026 · Ollama 0.6.x · figures from a 24 GB Apple Silicon Mac running <code>qwen3.5:9b</code></p>
+</header>
+
+<h2>The two rates</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th></th><th>Prefill (prompt eval)</th><th>Decode (eval)</th></tr></thead>
+<tbody>
+<tr><td>Does what</td><td>Reads your prompt</td><td>Writes the reply</td></tr>
+<tr><td>Parallel?</td><td>Yes — whole prompt at once</td><td>No — strictly one token at a time</td></tr>
+<tr><td>Grows with</td><td>Prompt length (history!)</td><td>Reply length</td></tr>
+<tr><td>Measured here</td><td>~120 tok/s fresh, ~881 cached</td><td>~50–55 tok/s warm</td></tr>
+<tr><td>Felt as</td><td>Delay before the first token</td><td>Speed the text appears</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Timing fields (all nanoseconds)</h2>
+
+<pre><code>tokens/sec  =  eval_count / eval_duration * 1e9        # decode rate (the usual quote)
+prefill/sec =  prompt_eval_count / prompt_eval_duration * 1e9</code></pre>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Field</th><th>Means</th></tr></thead>
+<tbody>
+<tr><td><code>load_duration</code></td><td>Model load. Non-zero = cold start, not slowness.</td></tr>
+<tr><td><code>prompt_eval_count</code></td><td>Prompt tokens — i.e. how much history you resend each turn.</td></tr>
+<tr><td><code>prompt_eval_duration</code></td><td>Time evaluating <em>uncached</em> prompt tokens. Unchanged prefixes are nearly free.</td></tr>
+<tr><td><code>eval_count</code> / <code>eval_duration</code></td><td>Reply tokens and the time to generate them.</td></tr>
+<tr><td><code>total_duration</code></td><td>Wall clock for the whole call.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Only returned when <code>"stream": false</code>. Measure with <a href="../assets/bench.ts"><code>node assets/bench.ts --cold --repeat 2 "your prompt"</code></a>.</p>
+
+<h2>Reading <code>ollama ps</code></h2>
+
+<pre><code>NAME          ID              SIZE     PROCESSOR    CONTEXT    RUNNER    UNTIL
+qwen3.5:9b    d63f830f28d5    7.7 GB   100% GPU     4096       mlx       4 minutes from now</code></pre>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Column</th><th>Read it as</th></tr></thead>
+<tbody>
+<tr><td><code>SIZE</code></td><td>Live footprint: weights + KV cache. Grows with context actually used, not with the file on disk.</td></tr>
+<tr><td><code>PROCESSOR</code></td><td><strong>The one that matters.</strong> <code>100% GPU</code> is healthy; any CPU share means it did not fit and you are off the cliff.</td></tr>
+<tr><td><code>CONTEXT</code></td><td>The <em>configured</em> window. Defaults by VRAM: &lt;24 GiB → 4k, 24–48 GiB → 32k, ≥48 GiB → 256k. Measured here: a 48,050-token prompt still ran, still recalled its system prompt, while this column read 4096. Treat it as the default, not a proven ceiling — and verify on your own runner.</td></tr>
+<tr><td><code>UNTIL</code></td><td>When it unloads. Default 5 minutes idle.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Symptom → cause</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Symptom</th><th>Check</th><th>Cause and fix</th></tr></thead>
+<tbody>
+<tr><td>First reply after a pause is slow, rest are fine</td><td><code>load_duration</code></td><td>Model unloaded after 5 min idle. Set <code>keep_alive: "30m"</code>, or <code>-1</code> to pin it.</td></tr>
+<tr><td>Everything is an order of magnitude slow</td><td><code>ollama ps</code> → <code>PROCESSOR</code></td><td>Spilling to CPU. Smaller model, smaller context, or free memory.</td></tr>
+<tr><td>Long delay before the first token, then fine</td><td><code>prompt_eval_count</code></td><td>Prefill on a long history. Trim or reset the conversation.</td></tr>
+<tr><td>Gradually slower over a long chat session</td><td><code>prompt_eval_count</code> growing, <code>SIZE</code> climbing</td><td>History compounding. Decide a trimming policy rather than letting it grow.</td></tr>
+<tr><td>Benchmark numbers look terrible</td><td><code>load_duration</code> &gt; 0</td><td>You benchmarked a cold run. Discard the first call, always.</td></tr>
+<tr><td>Replies truncate mid-JSON</td><td><code>eval_count</code> vs <code>num_predict</code></td><td>Hit the generation cap. See <a href="structured-output.html">Structured output</a>.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Knobs</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Knob</th><th>Where</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>keep_alive</code></td><td>per request</td><td>Residency. Duration string, seconds, <code>-1</code> to pin, <code>0</code> to unload immediately.</td></tr>
+<tr><td><code>OLLAMA_KEEP_ALIVE</code></td><td>server env</td><td>Same, for every model. Per-request <code>keep_alive</code> overrides it.</td></tr>
+<tr><td><code>OLLAMA_CONTEXT_LENGTH</code></td><td>server env</td><td><code>OLLAMA_CONTEXT_LENGTH=64000 ollama serve</code>. Costs memory; agents and coding tools want ≥ 64k.</td></tr>
+<tr><td><code>options.num_ctx</code></td><td>per request</td><td>Per-call context window.</td></tr>
+<tr><td><code>ollama stop &lt;model&gt;</code></td><td>CLI</td><td>Free the memory now.</td></tr>
+<tr><td><code>ollama run &lt;model&gt; --verbose</code></td><td>CLI</td><td>Prints the same timing stats after each interactive reply.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn"><p><strong>Benchmarking discipline.</strong> Discard the first call (cold load). Change one variable at a time. Quote prefill and decode separately, and say whether the prompt was cached — a repeated prompt measured ~7× faster prefill here, which is enough to fake any result you like.</p></div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0002-reading-the-machine.html">← Lesson 02: Reading the machine</a>
+  <a href="structured-output.html">Reference: Structured output</a>
+  <a href="https://docs.ollama.com/context-length">Ollama: context length</a>
+  <a href="../RESOURCES.md">Resources</a>
+</nav>
+
+</main>
+</body>
+</html>

@@ -53,7 +53,7 @@ Conventions that are easy to break:
 - Lessons open over `file://`, where ES modules are blocked by CORS. `assets/quiz.js` is therefore a **classic script**, not a module — keep it that way, and load it with a plain `<script src>`.
 - Every lesson links `../assets/lesson.css`, carries a dated meta line, cites primary sources inline, ends with a Sources list, and reminds the reader they can ask follow-up questions.
 - Quiz options are kept within a few characters of each other and the correct answer's position is varied across questions, so neither length nor order leaks the answer.
-- These are documents, not code: `tsconfig.json`'s `*/*.ts` include and `node --test`'s discovery both ignore them. Adding a lesson never affects the build or the test run.
+- Lessons and reference sheets are documents, not code, and adding one never affects the build or the test run. The exception is `assets/*.ts` — tooling the lessons drive the reader to run (`bench.ts`). Those *are* covered by `tsconfig.json`'s `*/*.ts` include and must typecheck, which is deliberate: a lesson that tells the reader to run a broken script is worse than no lesson. They are not test files, so `node --test` still ignores them.
 
 ## Testing
 
