@@ -16,4 +16,5 @@
 
 ## Open questions to revisit
 - **Posed to Sandor in Lesson 02, unanswered:** should `chef.ts` reset `history` per wish? It currently never clears, so prefill cost compounds across a session. His answer shapes exercise 01's next revision.
-- Lesson 03 candidates, in rough preference order: (a) raising the context window and measuring what it costs in RAM and prefill; (b) does a bigger context make the model measurably worse — a real experiment, and a strong candidate for exercise 02; (c) quantization trade-offs, blocked on finding a trusted source.
+- The lesson plan now lives in `lessons/index.html` (the course map), not here — Sandor asked how many lessons were planned and there was no visible answer. Nine, two tracks, 03 and 04 firm and the rest a sketch. Keep the map honest: mark things done, drop what stops being worth it, and do not let it ossify into a syllabus.
+- Quantization trade-offs (Lesson 04) are still blocked on finding a trusted source — see the Gaps section in RESOURCES.md.

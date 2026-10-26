@@ -184,3 +184,34 @@ th { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-t
   text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 0.25rem;
 }
 .detour > :last-child { margin-bottom: 0; }
+
+/* ---- course map: lesson cards with a status ---- */
+.track { margin-bottom: 2.5rem; }
+.track > h3 {
+  font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule); padding-bottom: 0.5rem; margin: 0 0 1.1rem;
+}
+.card {
+  display: grid; grid-template-columns: 2.2rem 1fr; gap: 0 0.9rem;
+  padding: 0.85rem 0; border-bottom: 1px solid var(--rule);
+}
+.card:last-child { border-bottom: none; }
+.card .n {
+  font-family: var(--mono); font-size: 0.85rem; color: var(--ink-faint);
+  padding-top: 0.15rem;
+}
+.card .title { font-weight: 650; margin: 0 0 0.2rem; }
+.card .title a { text-decoration: none; }
+.card .title a:hover { text-decoration: underline; }
+.card .blurb { margin: 0; font-size: 0.92rem; color: var(--ink-soft); }
+.card .tag {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 0.12rem 0.4rem; border-radius: 3px;
+  border: 1px solid currentColor; margin-left: 0.5rem; vertical-align: 0.1em;
+  white-space: nowrap;
+}
+.tag.done { color: var(--good); }
+.tag.next { color: var(--accent); }
+.tag.plan { color: var(--ink-faint); }
+.card.planned .title { font-weight: 500; color: var(--ink-soft); }
