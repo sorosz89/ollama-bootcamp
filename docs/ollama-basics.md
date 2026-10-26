@@ -1,6 +1,6 @@
 # Ollama & local LLM basics
 
-_As of 26 Oct 2026. Assumes an Apple Silicon Mac and Python._
+_As of 26 Oct 2026. Assumes an Apple Silicon Mac and Node 24+ with TypeScript._
 
 ## 1. How Ollama works
 
@@ -70,7 +70,19 @@ curl http://localhost:11434/api/chat -d '{
 }'
 ```
 
-Key options: `format` (JSON schema), `options.temperature` (0.2–0.4 for structured output), `options.num_ctx`, `keep_alive`, `think`.
+The same call from TypeScript, via the official [`ollama`](https://www.npmjs.com/package/ollama) package:
+
+```ts
+import ollama from "ollama";
+
+const res = await ollama.chat({
+  model: "qwen3.5:9b",
+  messages: [{ role: "user", content: "Name 3 gluten-free grains" }],
+});
+console.log(res.message.content);
+```
+
+Key options: `format` (JSON schema — build it from a Zod schema with `z.toJSONSchema()`), `options.temperature` (0.2–0.4 for structured output), `options.num_ctx`, `keep_alive`, `think`.
 
 ## 5. Pitfalls
 

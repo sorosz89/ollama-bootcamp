@@ -1,0 +1,21 @@
+{
+  "name": "ollama-bootcamp",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "01": "node 01-gluten-free-chef/chef.ts"
+  },
+  "dependencies": {
+    "ollama": "^0.6",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5.9"
+  }
+}
