@@ -10,7 +10,7 @@
 <main class="page">
 
 <header class="masthead">
-  <p class="kicker">Ollama Bootcamp · Lesson 05 · Making the output trustworthy</p>
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 6 of 14 · Lesson 05</p>
   <h1>Schemas a small model can fill</h1>
   <p class="standfirst">The grammar will force a model into any shape you define. That does not mean every shape is a good idea. Schema design turns out to be a latency decision and a reliability decision, not just a modelling one.</p>
   <p class="meta">Part 1 ~6 minutes · Part 2 ~10 minutes · measured on this machine, 26 Oct 2026</p>
@@ -65,7 +65,7 @@
 <ol class="steps">
   <li>
     <p>Run the comparison yourself:</p>
-    <pre><code>node assets/schema-bench.ts</code></pre>
+    <pre><code>node course/assets/schema-bench.ts</code></pre>
     <p>Three shapes, same prompt. <strong>Note the token counts</strong>, and watch the nested case fail.</p>
   </li>
   <li>
@@ -150,7 +150,7 @@ ingredients: [
 <h2>Do it: shape a schema deliberately</h2>
 
 <ol class="steps">
-  <li><p>Take the nested case in <code>assets/schema-bench.ts</code> and flatten it by hand — same information, fewer levels. Re-run and compare token counts.</p></li>
+  <li><p>Take the nested case in <code>course/assets/schema-bench.ts</code> and flatten it by hand — same information, fewer levels. Re-run and compare token counts.</p></li>
   <li><p>Raise <code>num_predict</code> for the nested case until it completes, and note how long it takes. That is the real cost of the shape, now that it is not failing.</p></li>
   <li><p>Replace one free-text field in your flattened version with an enum. Check the token count moves the way you expect.</p></li>
   <li><p>Write down the rule you would give someone else about when to nest. If you can state it in one sentence, it is a candidate for an exercise — see <a href="0009-designing-an-exercise.html">Lesson 09</a>.</p></li>
@@ -223,14 +223,14 @@ ingredients: [
 <ul class="sources">
   <li><a href="https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md">llama.cpp — GBNF grammar guide</a>. What a grammar can and cannot express.</li>
   <li><a href="https://ollama.com/blog/structured-outputs">Ollama blog — Structured outputs</a>. Official guidance on schema use.</li>
-  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/schema-bench.ts"><code>assets/schema-bench.ts</code></a> — flat 290 tok / 5.3 s, flat+enums 332 tok / 6.5 s, nested 1,200 tok capped and truncated at 19.4 s.</li>
+  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/schema-bench.ts"><code>course/assets/schema-bench.ts</code></a> — flat 290 tok / 5.3 s, flat+enums 332 tok / 6.5 s, nested 1,200 tok capped and truncated at 19.4 s.</li>
 </ul>
 
 <nav class="footer-nav">
-  <a href="../index.html">All lessons</a>
-  <a href="0004-fitting-a-model-in-memory.html">← Lesson 04</a>
-  <a href="0006-does-a-bigger-context-make-it-dumber.html">Lesson 06 →</a>
-  <a href="../reference/structured-output.html">Reference: Structured output</a>
+  <a href="../lessons/0004-fitting-a-model-in-memory.html">← Step 5: Fitting a model in your memory</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../challenges/02-fit-the-brief.html"><strong>Next → Step 7: Fit the brief in the budget</strong></a>
+  <span class="nav-refs">Reference: <a href="../reference/structured-output.html">Structured output</a></span>
 </nav>
 
 </main>

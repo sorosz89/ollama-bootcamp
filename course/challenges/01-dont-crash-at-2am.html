@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenge 01 · Don't crash at 2am</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 4 of 14 · Challenge 01</p>
+  <h1>Don't crash at 2am</h1>
+  <p class="standfirst">Your recipe tool is running on a tablet in a café kitchen. At 2am the overnight prep list asks for a fifteen-ingredient feast, the reply runs past the token cap, and the app dies with a <code>SyntaxError</code> in front of nobody who can fix it. You are asked to make it never do that again.</p>
+  <p class="meta">~30 minutes · no answer is written down anywhere</p>
+</header>
+
+<h2>Your job</h2>
+
+<pre><code># write your solution here
+course/challenges/01-dont-crash-at-2am/starter.ts
+
+# run the acceptance criteria until they pass
+node --test course/challenges/01-dont-crash-at-2am/verify.ts</code></pre>
+
+<p><strong>8 assertions</strong> decide when you are done.</p>
+
+<p><strong>Build:</strong> <code>decide(reply, cap, attempt, maxAttempts)</code> — a pure function returning <code>parse</code>, <code>retry</code> or <code>give-up</code>.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Never attempt to parse a reply that stopped early.</li>
+    <li>Give a truncated reply <em>more room</em> on retry — a retry that changes nothing is just a slower failure.</li>
+    <li>Never ask for more than <code>HARD_CAP</code> tokens, however many times it truncates.</li>
+    <li>Distinguish "ran out of room" from "came back malformed" from "the model was unloaded". They do not deserve the same response.</li>
+    <li>Terminate. Always. There is a test that runs your function in a loop and fails if it never stops.</li>
+    <li>Explain itself when it gives up.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 03.</p>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to say what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages will usually get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review this.</strong> Paste what you wrote and I will argue with it — including whether passing the tests actually means you solved the problem.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0003-when-the-model-cant-comply.html">← Step 3: When the model can't comply</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../lessons/0004-fitting-a-model-in-memory.html"><strong>Next → Step 5: Fitting a model in your memory</strong></a>
+</nav>
+
+</main>
+</body>
+</html>

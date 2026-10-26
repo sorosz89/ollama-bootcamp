@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenge 04 · Know when to stop</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 11 of 14 · Challenge 04</p>
+  <h1>Know when to stop</h1>
+  <p class="standfirst">A support note: "it thinks for thirty seconds and then gives me the same wrong answer it had at the start." You watch the log. Attempt one is 0.5 off target, attempt two 0.2, attempt three back to 0.5. It is cycling — fixing the protein breaks the calories, fixing the calories breaks the protein — and the fixed count of three attempts means it pays for all of it before giving up.</p>
+  <p class="meta">~25 minutes · no answer is written down anywhere</p>
+</header>
+
+<h2>Your job</h2>
+
+<pre><code># write your solution here
+course/challenges/04-know-when-to-stop/starter.ts
+
+# run the acceptance criteria until they pass
+node --test course/challenges/04-know-when-to-stop/verify.ts</code></pre>
+
+<p><strong>9 assertions</strong> decide when you are done.</p>
+
+<p><strong>Build:</strong> <code>shouldContinue(distances, maxAttempts)</code>, given how far from target each attempt landed.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Continue while there is meaningful progress — at least <code>MIN_IMPROVEMENT</code> relative to the attempt before.</li>
+    <li>Stop when progress stalls. Half a percent is noise, not improvement.</li>
+    <li>Stop when the answer gets <em>worse</em>.</li>
+    <li>Stop when it oscillates, rather than cycling forever between two bad answers.</li>
+    <li>Stop at zero. The target was hit.</li>
+    <li>Respect <code>maxAttempts</code> as an absolute ceiling.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 07.</p>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to say what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages will usually get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review this.</strong> Paste what you wrote and I will argue with it — including whether passing the tests actually means you solved the problem.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../challenges/03-the-filter-that-missed.html">← Step 10: The filter that missed</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../lessons/0008-staying-fast-in-something-real.html"><strong>Next → Step 12: Staying fast in something real</strong></a>
+</nav>
+
+</main>
+</body>
+</html>

@@ -10,7 +10,7 @@
 <main class="page">
 
 <header class="masthead">
-  <p class="kicker">Ollama Bootcamp · Lesson 06 · Running the model well</p>
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 8 of 14 · Lesson 06</p>
   <h1>Does a bigger context make it dumber?</h1>
   <p class="standfirst">This is the one lesson with an honest "I don't know" in it. There is a well-documented effect where models lose track of things buried in the middle of a long prompt. Whether your model does it, at your context sizes, is a question only measurement answers — and the measuring is the lesson.</p>
   <p class="meta">Part 1 ~6 minutes · Part 2 ~12 minutes, plus however long you let it run · 26 Oct 2026</p>
@@ -56,14 +56,14 @@
 <ol class="steps">
   <li>
     <p>Run it at a modest size first:</p>
-    <pre><code>node assets/needle.ts --tokens 8000</code></pre>
+    <pre><code>node course/assets/needle.ts --tokens 8000</code></pre>
   </li>
   <li>
     <p>On this machine, that produced <strong>FOUND at all three positions</strong> — no U-shape visible at 8,000 tokens. Prefill took about 23 seconds per call. <strong>If you get the same, that is a real result</strong>, not a failed experiment: it tells you the effect is not biting at the size you work at.</p>
   </li>
   <li>
     <p>Push until something changes:</p>
-    <pre><code>node assets/needle.ts --tokens 20000</code></pre>
+    <pre><code>node course/assets/needle.ts --tokens 20000</code></pre>
     <p>Expect this to be slow — around a minute of prefill per call, so three minutes for the set. Go and make tea.</p>
   </li>
   <li>
@@ -111,7 +111,7 @@
 </table>
 </div>
 
-<p><code>assets/needle.ts</code> does the first three and the last one. It does <em>not</em> repeat each cell — so a single run is suggestive, not conclusive. Extending it to repeat and report a hit rate is a small change and a good one.</p>
+<p><code>course/assets/needle.ts</code> does the first three and the last one. It does <em>not</em> repeat each cell — so a single run is suggestive, not conclusive. Extending it to repeat and report a hit rate is a small change and a good one.</p>
 
 <h2>Retrieval is the easy task</h2>
 
@@ -146,7 +146,7 @@
 <h2>Do it: run a real experiment</h2>
 
 <ol class="steps">
-  <li><p>Extend <code>assets/needle.ts</code> to repeat each position three times and report a hit rate rather than a single FOUND/LOST.</p></li>
+  <li><p>Extend <code>course/assets/needle.ts</code> to repeat each position three times and report a hit rate rather than a single FOUND/LOST.</p></li>
   <li><p>Add a negative control: a run where the needle is absent, scoring a confident wrong answer as a failure.</p></li>
   <li><p>Run the grid at 8k and 20k. Two sizes, three positions, three repeats, plus controls. Budget half an hour of wall clock, most of it waiting.</p></li>
   <li><p>Write up what you found in three sentences — including, if that is what happened, that you found nothing. <strong>A null result you can defend is a better artifact than a positive one you cannot.</strong></p></li>
@@ -217,15 +217,15 @@
 <h2 id="sources">Sources</h2>
 <ul class="sources">
   <li><a href="https://arxiv.org/abs/2307.03172">Liu et al. (2023), Lost in the Middle: How Language Models Use Long Contexts</a>. The U-shaped position curve and the experimental design.</li>
-  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/needle.ts"><code>assets/needle.ts</code></a> — needle found at 0%, 50% and 100% depth in an 8,047-token prompt; prefill ~23.6 s per call.</li>
+  <li>Measurements: <code>qwen3.5:9b</code> on this machine, 26 Oct 2026, via <a href="../assets/needle.ts"><code>course/assets/needle.ts</code></a> — needle found at 0%, 50% and 100% depth in an 8,047-token prompt; prefill ~23.6 s per call.</li>
   <li>Prefill and memory figures carried over from <a href="0002-reading-the-machine.html">Lesson 02</a>.</li>
 </ul>
 
 <nav class="footer-nav">
-  <a href="../index.html">All lessons</a>
-  <a href="0005-schemas-a-small-model-can-fill.html">← Lesson 05</a>
-  <a href="0007-what-to-verify-what-to-reask.html">Lesson 07 →</a>
-  <a href="../reference/performance.html">Reference: Performance</a>
+  <a href="../challenges/02-fit-the-brief.html">← Step 7: Fit the brief in the budget</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../lessons/0007-what-to-verify-what-to-reask.html"><strong>Next → Step 9: What to verify, what to re-ask</strong></a>
+  <span class="nav-refs">Reference: <a href="../reference/performance.html">Performance</a></span>
 </nav>
 
 </main>

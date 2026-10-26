@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenge 05 · The café board</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 14 of 14 · Challenge 05</p>
+  <h1>The café board</h1>
+  <p class="standfirst">The café wants a prep-list tool. The chef types what is in the walk-in fridge — in a hurry, with typos, sometimes just "chicken, rice, whatever greens" — and gets back a prep list for the day. It runs on one laptop in the back office. It must not crash, it must not quietly invent an allergen, and when it is unsure it has to say so rather than guess.</p>
+  <p class="meta">~a few hours · no answer is written down anywhere</p>
+</header>
+
+<h2>Your job</h2>
+
+<pre><code># build a real exercise at the repo root, e.g.
+02-cafe-board/README.md
+02-cafe-board/board.ts
+02-cafe-board/board.test.ts
+
+# then check you shipped it the way this repo ships things
+node --test course/challenges/05-the-cafe-board/verify.ts</code></pre>
+
+<p>There is no <code>starter.ts</code> for this one. The deliverable is a working exercise in the repo, not a function in a sandbox.</p>
+
+<p>There is no test for judgement. What <code>verify.ts</code> checks is that you shipped it the way this repo ships things — 6 structural checks.</p>
+
+<p>There is no right answer to this one and no test that can check your judgement. What the verifier checks is that you shipped it the way this repo ships things: a real exercise directory, a README with honest Caveats, tests that run without a model, and the logic pulled out where tests can reach it.</p>
+
+  <p><strong>The constraints that make it realistic:</strong></p>
+  <ul>
+    <li><strong>Hostile input.</strong> The chef is busy. Empty strings, typos, one-word answers, nonsense. None of it may crash the tool.</li>
+    <li><strong>A latency budget.</strong> Something useful on screen within a few seconds. You know from Lesson 08 that this is mostly a question of streaming and warm-up, and from Lesson 05 that schema shape decides the rest.</li>
+    <li><strong>One laptop.</strong> 24 GB, shared with everything else the office runs. Lesson 04 is the arithmetic.</li>
+    <li><strong>Honest uncertainty.</strong> When the model's output fails your checks, the tool says so. Never present a verified-wrong value as if it were fine.</li>
+  </ul>
+
+  <p><strong>Grade yourself on these</strong> — they are the questions I would ask:</p>
+  <ol>
+    <li>What exactly does code decide, and what does the model decide? Can you state the seam in one sentence?</li>
+    <li>What happens on the worst input you can think of? Have you actually tried it?</li>
+    <li>What does your Caveats section admit? If it admits nothing, it is not finished.</li>
+    <li>Could someone else run it from your README alone?</li>
+  </ol>
+
+  <p class="cite">Builds on everything. A few hours. This is the exercise-02 candidate from <a href="../lessons/0009-designing-an-exercise.html">Lesson 09</a>, made concrete.</p>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to say what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages will usually get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review this.</strong> Paste what you wrote and I will argue with it — including whether passing the tests actually means you solved the problem.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0009-designing-an-exercise.html">← Step 13: Designing an exercise from a finding</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../index.html"><strong>Finished — back to the index</strong></a>
+</nav>
+
+</main>
+</body>
+</html>

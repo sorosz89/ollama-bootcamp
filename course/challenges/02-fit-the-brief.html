@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenge 02 · Fit the brief in the budget</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 7 of 14 · Challenge 02</p>
+  <h1>Fit the brief in the budget</h1>
+  <p class="standfirst">Product have been using the tool and want six more things on every recipe: cuisine, difficulty, prep time, cook time, allergens, and the equipment needed. They also want the first recipe on screen faster than it is now. Both, please.</p>
+  <p class="meta">~30 minutes · no answer is written down anywhere</p>
+</header>
+
+<h2>Your job</h2>
+
+<pre><code># write your solution here
+course/challenges/02-fit-the-brief/starter.ts
+
+# run the acceptance criteria until they pass
+node --test course/challenges/02-fit-the-brief/verify.ts</code></pre>
+
+<p><strong>7 assertions</strong> decide when you are done.</p>
+
+<p><strong>Build:</strong> the <code>BriefedRecipe</code> Zod schema.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Keep everything the recipe already carries — title, servings, ingredients, steps.</li>
+    <li>Add all six new fields.</li>
+    <li>Use enums wherever the value comes from a known set. Free text where a list would do is a bug here, not a style preference.</li>
+    <li>Contain nothing the code could derive. <em>Total</em> time is prep plus cook; asking the model for it buys you a chance of it being wrong.</li>
+    <li>Stay within <strong>2 levels of nesting</strong> and <strong>16 leaf fields</strong>. Both budgets come from Lesson 05's measurements, where a deep schema cost 4× the tokens and then failed.</li>
+    <li>Actually validate a plausible recipe.</li>
+  </ul>
+
+  <p class="cite">Builds on Lesson 05.</p>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to say what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages will usually get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review this.</strong> Paste what you wrote and I will argue with it — including whether passing the tests actually means you solved the problem.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0005-schemas-a-small-model-can-fill.html">← Step 6: Schemas a small model can fill</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../lessons/0006-does-a-bigger-context-make-it-dumber.html"><strong>Next → Step 8: Does a bigger context make it dumber?</strong></a>
+</nav>
+
+</main>
+</body>
+</html>

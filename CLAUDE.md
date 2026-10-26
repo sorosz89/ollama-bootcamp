@@ -38,26 +38,25 @@ Everything shares the root `package.json` and `tsconfig.json`; there are no work
 
 ## Teaching workspace
 
-The repo is also a learning workspace, driven by the `teach` skill, and it is tracked in git — the learning trail is part of what the repo demonstrates. Write every file in it for a reader who is not the author.
+Everything for learning lives under `course/`, tracked in git — the learning trail is part of what the repo demonstrates. Write every file in it for a reader who is not the author.
 
-- `MISSION.md` — why this is being learned. Every lesson traces back to it; it decides what is worth teaching next.
-- `RESOURCES.md` — trusted sources, each annotated with when to reach for it. Its `## Gaps` section names what no good source has been found for yet, and drives the next round of research.
-- `NOTES.md` — working notes, preferences, decisions, and the queue of candidate lessons.
-- `learning-records/NNNN-*.md` — what has been established and why it changes what to teach next. Sequential; scan for the highest number and increment.
-- `index.html` (repo root) — the course home page: every lesson, every reference sheet, every tool. The entry point, and the only place the overall shape is visible. Update it whenever a lesson or tool is added.
-- `lessons/NNNN-*.html` — one self-contained lesson per file, numbered sequentially. Short enough to finish in 10–15 minutes, one idea each.
-- `reference/*.html` — durable cheat sheets. Lessons are read once; these get reopened, so they carry the compressed version.
-- `assets/` — shared components. Reuse is the default: read this directory before authoring a lesson, and put anything a second lesson would duplicate here instead of inlining it. Holds the stylesheet, the quiz component, and three measurement tools the lessons drive readers to run: `bench.ts` (timing receipt), `schema-bench.ts` (cost of schema shape), `needle.ts` (long-context retrieval).
-- `challenges/` — five scenario briefs (`index.html`) plus a directory each holding `starter.ts` (the learner's to fill) and `verify.ts` (executable acceptance criteria). **Never commit solutions to `starter.ts`** — a solved starter destroys the challenge for its only user. `verify.ts` files are deliberately failing until solved, which is safe because bare `node --test` only auto-discovers `*.test.ts`, so CI stays green; run them with `npm run challenge`. Challenge code *is* typechecked (`tsconfig.json` includes `*/*/*.ts`), so starters must compile as given.
-- `reference/glossary.html` — the canonical vocabulary. When a lesson uses a term from it, use it in that sense; when a lesson coins a term worth keeping, add it there.
+**The course is one linear path of 14 steps**, lessons and challenges interleaved so a challenge only ever needs what the preceding lessons covered. `course/index.html` is the single entry point and the only place the path is defined; every step page carries a `Step N of 14` marker and a footer bar linking the previous step, the index, and the next. **If you add, remove or reorder a step you must update all three:** the index path, the step's own marker, and the neighbouring pages' prev/next links. A reader who cannot tell what to do next is the failure mode this structure exists to prevent.
+
+- `course/index.html` — the path, the reference list, the tool list. Start and end here.
+- `course/lessons/NNNN-*.html` — nine lessons, two tiers each (see below).
+- `course/challenges/NN-*.html` — the brief for each challenge; `course/challenges/NN-*/` holds its `starter.ts` and `verify.ts`.
+- `course/reference/*.html` — five cheat sheets. Lessons are read once; these get reopened.
+- `course/assets/` — shared components: `lesson.css`, `quiz.js`, and the measurement tools `bench.ts`, `schema-bench.ts`, `needle.ts`. Reuse is the default; read this directory before authoring anything.
+- Repo root keeps `MISSION.md`, `RESOURCES.md`, `NOTES.md` and `learning-records/` — the workspace's own state, not reading material.
 
 Conventions that are easy to break:
 
 - Lessons open over `file://`, where ES modules are blocked by CORS. `assets/quiz.js` is therefore a **classic script**, not a module — keep it that way, and load it with a plain `<script src>`.
-- Every lesson links `../assets/lesson.css`, carries a dated meta line, cites primary sources inline, ends with a Sources list, and reminds the reader they can ask follow-up questions.
-- **Lead with the idea, not the instruments.** A lesson with any depth to it is built in two tiers: a Part 1 that stands alone (plain language, a jargon table, one command, its own quiz, a three-point takeaway) and a Part 2 behind a `.tier` divider for measurement and edge cases. Components for this are in the stylesheet: `.tier`, `.jargon`, `.takeaway`, `.detour` (a skippable aside). Depth is never cut to achieve this — it is moved below the fold.
-- Quiz options are kept within a few characters of each other and the correct answer's position is varied across questions, so neither length nor order leaks the answer.
-- Lessons and reference sheets are documents, not code, and adding one never affects the build or the test run. The exception is `assets/*.ts` — tooling the lessons drive the reader to run (`bench.ts`). Those *are* covered by `tsconfig.json`'s `*/*.ts` include and must typecheck, which is deliberate: a lesson that tells the reader to run a broken script is worse than no lesson. They are not test files, so `node --test` still ignores them.
+- **Lead with the idea, not the instruments.** Every lesson with depth is two tiers: a Part 1 that stands alone (plain language, a jargon table, one command, its own quiz, a three-point takeaway) and a Part 2 behind a `.tier` divider. Components: `.tier`, `.jargon`, `.takeaway`, `.detour`, `.path`.
+- Every page links `../assets/lesson.css`, carries a dated meta line, cites primary sources inline, and ends with a Sources list and an invitation to ask questions.
+- Quiz options stay within a few characters of each other and the correct answer's position varies, so neither length nor order leaks the answer.
+- **Never commit solutions to a `starter.ts`** — a solved starter destroys the challenge for its only user. `verify.ts` files fail until solved, which is safe because bare `node --test` only auto-discovers `*.test.ts`; run them with `npm run challenge`. All course code is typechecked (`tsconfig.json` includes `**/*.ts`), so starters must compile as given.
+- Shell paths quoted in pages are repo-root relative (`node course/assets/bench.ts`), while links between pages are relative to the page. Mixing these up is the most common breakage after a move.
 
 ## Testing
 

@@ -12,6 +12,8 @@
 - **Lead with the plain-language mental model; put measurement second** (said of Lesson 02, 26 Oct 2026: "it is too much to me for now"). Fluency with cloud APIs did not transfer to local-runtime internals as much as I assumed — being senior in one area does not make someone a beginner-proof reader in the adjacent one. Default shape from here: a Part 1 that is complete on its own (idea, jargon table, one command, a short quiz, a three-point takeaway), then a clearly marked Part 2 for instruments and edge cases. Keep the depth; just stop opening with it.
 
 ## Decisions
+
+- **The course is one folder and one path** (26 Oct 2026). Sandor: "it is challenging to understand where to start, how to proceed." Nine lessons and five challenges had separate numbering and separate index pages, so the order was implicit and the reader had to assemble it. Now: `course/` holds everything, `course/index.html` is the only entry point, and all 14 steps are numbered in one sequence with Next links. Challenges sit immediately after the lesson that equips them. **Lesson: a complete set of material is not a course until the path through it is explicit.**
 - **The teaching workspace is tracked in the public repo** (decided 26 Oct 2026). The learning trail is portfolio material in its own right, so lessons, reference sheets, mission and learning records all ship alongside the exercises. Write them for a reader who is not Sandor: no private notes, no half-finished drafts committed.
 
 ## Open questions to revisit

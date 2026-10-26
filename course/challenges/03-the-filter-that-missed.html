@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Challenge 03 · The filter that missed</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 10 of 14 · Challenge 03</p>
+  <h1>The filter that missed</h1>
+  <p class="standfirst">A coeliac customer reports being served something with soy sauce in it. The recipe went through the gluten filter and came out clean. You check, and find the model had written <code>"Soy  Sauce"</code> with two spaces — and the filter's word-boundary regex never matched. This is a real bug in this repo, and it is live right now.</p>
+  <p class="meta">~40 minutes · no answer is written down anywhere</p>
+</header>
+
+<h2>Your job</h2>
+
+<pre><code># write your solution here
+course/challenges/03-the-filter-that-missed/starter.ts
+
+# run the acceptance criteria until they pass
+node --test course/challenges/03-the-filter-that-missed/verify.ts</code></pre>
+
+<p><strong>7 assertions</strong> decide when you are done.</p>
+
+<p><strong>Verify the bug first:</strong></p>
+  <pre><code>node --input-type=module -e 'import {GLUTEN_RE} from "./01-gluten-free-chef/chef.ts";
+console.log(GLUTEN_RE.test("soy  sauce"), GLUTEN_RE.test("Soy-Sauce"))'</code></pre>
+  <p>Both print <code>false</code>. Models write names inconsistently, and a safety filter that depends on exact spacing is not a safety filter.</p>
+
+  <p><strong>Build:</strong> <code>canonicalName(raw)</code> and <code>containsGluten(rawName)</code>.</p>
+
+  <p><strong>It must:</strong></p>
+  <ul>
+    <li>Treat <code>"soy sauce"</code>, <code>"Soy  Sauce"</code>, <code>"Soy-Sauce"</code> and <code>"soy_sauce"</code> as the same thing.</li>
+    <li>Keep catching everything the current filter catches.</li>
+    <li>Keep <em>not</em> flagging <code>buckwheat</code>, <code>maltodextrin</code> or <code>tamari</code> — the false positives the current regex was carefully written to avoid.</li>
+    <li>Trust an explicit label: <code>"gluten-free breadcrumbs"</code> is not a gluten ingredient. The repo's Caveats section admits this false positive; here you fix it.</li>
+    <li>Not be fooled by <code>"wheat flour (not gluten free)"</code>.</li>
+  </ul>
+
+  <div class="warn"><p>This is the one with real-world stakes attached, and it is also the one where passing the tests is not the same as being safe. When you are done, write one sentence for the exercise's Caveats about what your filter still cannot catch.</p></div>
+
+  <p class="cite">Builds on Lesson 07.</p>
+
+<h2>If you get stuck</h2>
+
+<p>In this order: reread the brief; run the verifier and read the assertion message, which is written to say what it wanted; open <code>verify.ts</code>; ask me. Asking is not cheating — but the assertion messages will usually get you there first.</p>
+
+<div class="ask no-print">
+  <p><strong>I will review this.</strong> Paste what you wrote and I will argue with it — including whether passing the tests actually means you solved the problem.</p>
+</div>
+
+<nav class="footer-nav">
+  <a href="../lessons/0007-what-to-verify-what-to-reask.html">← Step 9: What to verify, what to re-ask</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../challenges/04-know-when-to-stop.html"><strong>Next → Step 11: Know when to stop</strong></a>
+</nav>
+
+</main>
+</body>
+</html>

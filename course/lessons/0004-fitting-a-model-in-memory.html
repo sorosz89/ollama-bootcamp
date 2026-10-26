@@ -10,7 +10,7 @@
 <main class="page">
 
 <header class="masthead">
-  <p class="kicker">Ollama Bootcamp · Lesson 04 · Running the model well</p>
+  <p class="kicker"><a href="../index.html">Ollama Bootcamp</a> · Step 5 of 14 · Lesson 04</p>
   <h1>Fitting a model in your memory</h1>
   <p class="standfirst">Choosing a local model is mostly arithmetic, and the arithmetic is simpler than the jargon suggests. By the end of this you will be able to look at any model tag and say whether it will run well on your machine — before downloading 40 GB to find out.</p>
   <p class="meta">Part 1 ~7 minutes · Part 2 ~10 minutes · measured on this machine, 26 Oct 2026</p>
@@ -159,7 +159,7 @@
 
 <ol class="steps">
   <li><p>Note your current <code>SIZE</code> from <code>ollama ps</code> with a short conversation loaded.</p></li>
-  <li><p>Run a deliberately long prompt — <code>node assets/needle.ts --tokens 8000</code> will do it — then check <code>ollama ps</code> again and record the new <code>SIZE</code>. The difference, divided by 8,000, is your approximate cost per token of context.</p></li>
+  <li><p>Run a deliberately long prompt — <code>node course/assets/needle.ts --tokens 8000</code> will do it — then check <code>ollama ps</code> again and record the new <code>SIZE</code>. The difference, divided by 8,000, is your approximate cost per token of context.</p></li>
   <li><p>Multiply that up. At what context length would weights plus cache reach your usable RAM? That number is your real ceiling, and it is almost certainly smaller than the 262,144 the model advertises.</p></li>
   <li><p>Optional, and genuinely informative: pull a model one size up (<code>gemma3:12b</code> or similar), run one prompt, and compare <code>PROCESSOR</code>, <code>SIZE</code> and decode rate against your 9B. You are looking for the point where it stops saying <code>100% GPU</code>.</p></li>
 </ol>
@@ -236,10 +236,10 @@
 </ul>
 
 <nav class="footer-nav">
-  <a href="../index.html">All lessons</a>
-  <a href="0003-when-the-model-cant-comply.html">← Lesson 03</a>
-  <a href="0005-schemas-a-small-model-can-fill.html">Lesson 05 →</a>
-  <a href="../reference/model-selection.html">Reference: Model selection</a>
+  <a href="../challenges/01-dont-crash-at-2am.html">← Step 4: Don't crash at 2am</a>
+  <a href="../index.html">All 14 steps</a>
+  <a href="../lessons/0005-schemas-a-small-model-can-fill.html"><strong>Next → Step 6: Schemas a small model can fill</strong></a>
+  <span class="nav-refs">Reference: <a href="../reference/model-selection.html">Model selection</a></span>
 </nav>
 
 </main>

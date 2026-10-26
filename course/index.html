@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ollama Bootcamp</title>
+<link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main class="page">
+
+<header class="masthead">
+  <p class="kicker">Learning local LLMs, one small thing at a time</p>
+  <h1>Ollama Bootcamp</h1>
+  <p class="standfirst">One path, 14 steps. Nine lessons to read and five challenges to build, in the order they make sense. Every figure was measured on this machine, not quoted from a blog post.</p>
+  <p class="meta">About 5 hours of reading and exercises, plus one open-ended build · last updated 26 Oct 2026</p>
+</header>
+
+<div class="takeaway">
+  <span class="label">Start here</span>
+  <ol>
+    <li>Open <a href="lessons/0001-the-grammar-not-the-prompt.html"><strong>Step 1 · The grammar, not the prompt</strong></a> and read Part 1. That is about five minutes.</li>
+    <li>Answer the quiz at the end of it. Getting one wrong is the useful outcome.</li>
+    <li>Click <strong>Next</strong> at the bottom. Every page has it, and it always points at the right next thing.</li>
+  </ol>
+</div>
+
+<h2>How a step works</h2>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th></th><th>What you do</th><th>How you know you are done</th></tr></thead>
+<tbody>
+<tr><td><strong>READ</strong> — a lesson</td><td>Read Part 1 (the idea, plain language), run one command, answer the quiz. Part 2 is the measurements and edge cases — read it now or come back to it.</td><td>You answered the quiz. It marks itself.</td></tr>
+<tr><td><strong>DO</strong> — a challenge</td><td>A scenario with acceptance criteria. Write code in <code>starter.ts</code>; the answer is written down nowhere.</td><td><code>node --test …/verify.ts</code> turns green.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Challenges are placed where you have just learned what they need, so doing them in order means never being stuck on something not yet covered. They are marked in red below.</p>
+
+<h2>The path</h2>
+
+<div class="path">
+  <div class="step">
+    <div class="marker">01<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0001-the-grammar-not-the-prompt.html">Lesson 01 · The grammar, not the prompt</a></p>
+      <p class="why">A schema does not ask the model for JSON — it makes every other shape impossible. What that guarantees, and the three things it leaves to you.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">02<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0002-reading-the-machine.html">Lesson 02 · Reading the machine</a></p>
+      <p class="why">A model has two speeds, and almost every "why is this slow" question is about which one. The timing receipt and ollama ps.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">03<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0003-when-the-model-cant-comply.html">Lesson 03 · When the model can't comply</a></p>
+      <p class="why">A reply that stops halfway is valid JSON right up to where it stops. Detecting it, and a retry loop that gives up for a reason.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step is-challenge">
+    <div class="marker">04<br>DO</div>
+    <div>
+      <p class="what"><a href="challenges/01-dont-crash-at-2am.html">Challenge 01 · Don't crash at 2am</a></p>
+      <p class="why">A truncated reply kills the app on a café tablet overnight. Build the function that decides what to do next.</p>
+      <p class="how">write <code>course/challenges/01-dont-crash-at-2am/starter.ts</code> → <code>node --test course/challenges/01-dont-crash-at-2am/verify.ts</code></p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">05<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0004-fitting-a-model-in-memory.html">Lesson 04 · Fitting a model in your memory</a></p>
+      <p class="why">Choosing a model is arithmetic. Read any tag and know whether it will run before you download it.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">06<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0005-schemas-a-small-model-can-fill.html">Lesson 05 · Schemas a small model can fill</a></p>
+      <p class="why">The same request in three shapes: 290 tokens, 332 tokens, or a failure. Schema design is a latency decision.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step is-challenge">
+    <div class="marker">07<br>DO</div>
+    <div>
+      <p class="what"><a href="challenges/02-fit-the-brief.html">Challenge 02 · Fit the brief in the budget</a></p>
+      <p class="why">Product want six new fields and a faster first result. Design the schema inside a nesting and field budget.</p>
+      <p class="how">write <code>course/challenges/02-fit-the-brief/starter.ts</code> → <code>node --test course/challenges/02-fit-the-brief/verify.ts</code></p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">08<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0006-does-a-bigger-context-make-it-dumber.html">Lesson 06 · Does a bigger context make it dumber?</a></p>
+      <p class="why">The lesson with an honest "I don't know" in it — a documented effect, a flaw in this course's own experiment, and how to test it properly.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">09<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0007-what-to-verify-what-to-reask.html">Lesson 07 · What to verify, what to re-ask</a></p>
+      <p class="why">Three buckets for every error: code fixes it, the model fixes it, nobody fixes it. Loops that converge.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz → Part 2 when you want it</p>
+    </div>
+  </div>
+  <div class="step is-challenge">
+    <div class="marker">10<br>DO</div>
+    <div>
+      <p class="what"><a href="challenges/03-the-filter-that-missed.html">Challenge 03 · The filter that missed</a></p>
+      <p class="why">A coeliac customer was served soy sauce and the filter said it was clean. This bug is live in this repo right now.</p>
+      <p class="how">write <code>course/challenges/03-the-filter-that-missed/starter.ts</code> → <code>node --test course/challenges/03-the-filter-that-missed/verify.ts</code></p>
+    </div>
+  </div>
+  <div class="step is-challenge">
+    <div class="marker">11<br>DO</div>
+    <div>
+      <p class="what"><a href="challenges/04-know-when-to-stop.html">Challenge 04 · Know when to stop</a></p>
+      <p class="why">"It thinks for thirty seconds and gives me the same wrong answer." Detect a loop that is not converging.</p>
+      <p class="how">write <code>course/challenges/04-know-when-to-stop/starter.ts</code> → <code>node --test course/challenges/04-know-when-to-stop/verify.ts</code></p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">12<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0008-staying-fast-in-something-real.html">Lesson 08 · Staying fast in something real</a></p>
+      <p class="why">What changes when the model sits behind an application: streaming, warm-up, cancellation, concurrency.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="marker">13<br>READ</div>
+    <div>
+      <p class="what"><a href="lessons/0009-designing-an-exercise.html">Lesson 09 · Designing an exercise from a finding</a></p>
+      <p class="why">Turning one measured surprise into an exercise with a lesson, tests and honest caveats.</p>
+      <p class="how">read Part 1 → try the command → answer the quiz</p>
+    </div>
+  </div>
+  <div class="step is-challenge">
+    <div class="marker">14<br>DO</div>
+    <div>
+      <p class="what"><a href="challenges/05-the-cafe-board.html">Challenge 05 · The café board</a></p>
+      <p class="why">An open brief: hostile input, a latency budget, one laptop. Graded on your judgement, plus structural checks.</p>
+      <p class="how">build a real exercise at the repo root → <code>node --test course/challenges/05-the-cafe-board/verify.ts</code></p>
+    </div>
+  </div>
+</div>
+
+<h2>Reference sheets</h2>
+
+<p>Not steps — lookups. Lessons are read once; these get reopened, and they print well.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Sheet</th><th>Reach for it when</th></tr></thead>
+<tbody>
+<tr><td><a href="reference/glossary.html">Glossary</a></td><td>A word is doing more work than you expected.</td></tr>
+<tr><td><a href="reference/structured-output.html">Structured output</a></td><td>Getting schema-valid JSON, and what that does not buy you.</td></tr>
+<tr><td><a href="reference/performance.html">Performance &amp; diagnostics</a></td><td>Something is slow and you want to know which half.</td></tr>
+<tr><td><a href="reference/model-selection.html">Choosing a model</a></td><td>Deciding what will actually run on your machine.</td></tr>
+<tr><td><a href="reference/resilient-calls.html">Resilient calls</a></td><td>Writing a retry loop that terminates.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Tools</h2>
+
+<p>Small scripts the lessons drive you to run. Typechecked in CI, so they should work. Run them from the repo root.</p>
+
+<div class="table-scroll">
+<table>
+<thead><tr><th>Command</th><th>Does</th><th>Used in</th></tr></thead>
+<tbody>
+<tr><td><code>node course/assets/bench.ts --cold --repeat 2 "prompt"</code></td><td>Prints the timing receipt: load, prefill and decode rates.</td><td>Step 2</td></tr>
+<tr><td><code>node course/assets/schema-bench.ts</code></td><td>One prompt through three schema shapes; shows the cost of structure.</td><td>Step 6</td></tr>
+<tr><td><code>node course/assets/needle.ts --tokens 8000</code></td><td>Hides a fact at three depths in a long prompt and tries to retrieve it.</td><td>Step 8</td></tr>
+<tr><td><code>npm run challenge</code></td><td>Runs all five challenge verifiers at once.</td><td>Steps 4, 7, 10, 11, 14</td></tr>
+<tr><td><code>npm run 01</code></td><td>The gluten-free chef exercise the whole course picks apart.</td><td>Throughout</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>How this course works</h2>
+
+<ul>
+  <li><strong>Everything is measured, and says so.</strong> Figures carry the machine, model and date they came from. Where a claim is folklore, it is labelled folklore.</li>
+  <li><strong>Mistakes stay visible.</strong> Step 8 opens by picking apart a flawed experiment from Step 2. Corrections teach more than a clean record.</li>
+  <li><strong>Null results count.</strong> "No effect at 8k tokens" is written down, because almost nobody writes that down.</li>
+  <li><strong>Ask at any point.</strong> Every page ends by inviting questions, and that is not decoration — it is the fastest part of this.</li>
+</ul>
+
+<div class="note"><p>Background: <a href="../MISSION.md">MISSION.md</a> (why this is being learned), <a href="../RESOURCES.md">RESOURCES.md</a> (the trusted sources, and what is still missing), <a href="../docs/ollama-basics.md">docs/ollama-basics.md</a> (the primer written before the course).</p></div>
+
+<nav class="footer-nav">
+  <a href="lessons/0001-the-grammar-not-the-prompt.html"><strong>Start → Step 1: The grammar, not the prompt</strong></a>
+  <a href="reference/glossary.html">Glossary</a>
+  <a href="https://ollama.com">ollama.com</a>
+</nav>
+
+</main>
+</body>
+</html>
